@@ -398,24 +398,25 @@ init_db()
 
 # --- HELPER EVOLUTION API WHATSAPP ---
 
-def send_evolution_whatsapp(numero, mensagem):
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute('SELECT evolution_api_url, evolution_api_key, evolution_instance, validar_whatsapp_ativo FROM configuracoes LIMIT 1')
-    cfg = dict(cursor.fetchone())
-    conn.close()
-
-    api_url = (cfg.get('evolution_api_url') or '').strip().rstrip('/')
-    api_key = (cfg.get('evolution_api_key') or '').strip()
-    instance = (cfg.get('evolution_instance') or '').strip()
+def send_evolution_whatsapp(numero, mensagem, custom_url=None, custom_key=None, custom_instance=None):
+    if custom_url and custom_key and custom_instance:
+        api_url = str(custom_url).strip().rstrip('/')
+        api_key = str(custom_key).strip()
+        instance = str(custom_instance).strip()
+    else:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('SELECT evolution_api_url, evolution_api_key, evolution_instance, validar_whatsapp_ativo FROM configuracoes LIMIT 1')
+        row = cursor.fetchone()
+        conn.close()
+        cfg = dict(row) if row else {}
+        api_url = (cfg.get('evolution_api_url') or '').strip().rstrip('/')
+        api_key = (cfg.get('evolution_api_key') or '').strip()
+        instance = (cfg.get('evolution_instance') or '').strip()
 
     if not api_url or not api_key or not instance:
-        print(f"[Evolution API Alert] Configurações incompletas da Evolution API. Mensagem enviada para log/console:")
-        try:
-            print(f"-> Para {numero}: {mensagem}")
-        except UnicodeEncodeError:
-            print(f"-> Para {numero}: {mensagem.encode('ascii', 'ignore').decode('ascii')}")
-        return False, "Configurações da Evolution API não preenchidas no painel Admin."
+        print(f"[Evolution API Alert] Configurações incompletas da Evolution API.")
+        return False, "Configurações da Evolution API incompletas (URL, API Key e Instância são obrigatórios)."
 
     # Sanitizar número (Apenas números ex: 5511999998888)
     num_limpo = ''.join(c for c in str(numero) if c.isdigit())
@@ -433,10 +434,21 @@ def send_evolution_whatsapp(numero, mensagem):
 
     try:
         req = urllib.request.Request(endpoint, data=payload, headers=headers, method='POST')
-        with urllib.request.urlopen(req, timeout=10) as response:
+        with urllib.request.urlopen(req, timeout=12) as response:
             res_body = response.read().decode('utf-8')
             print(f"[Evolution API Success] WhatsApp enviado para {num_limpo}: {res_body}")
-            return True, "Mensagem enviada com sucesso!"
+            return True, res_body
+    except urllib.error.HTTPError as e:
+        err_content = e.read().decode('utf-8', errors='ignore')
+        print(f"[Evolution API HTTPError] Status {e.code} para {num_limpo}: {err_content}")
+        try:
+            err_json = json.loads(err_content)
+            msg_detalhe = err_json.get('response', {}).get('message') or err_json.get('message') or err_content
+            if isinstance(msg_detalhe, list):
+                msg_detalhe = ", ".join(msg_detalhe)
+            return False, f"HTTP {e.code}: {msg_detalhe}"
+        except Exception:
+            return False, f"HTTP {e.code}: {err_content or e.reason}"
     except Exception as e:
         print(f"[Evolution API Error] Erro ao enviar mensagem WhatsApp para {num_limpo}: {e}")
         return False, str(e)
@@ -691,19 +703,39 @@ def testar_evolution_api():
     if not get_current_admin(token):
         return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
 
+    data = request.json or {}
+    custom_url = data.get('url', '').strip()
+    custom_key = data.get('key', '').strip()
+    custom_instance = data.get('instance', '').strip()
+
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute('SELECT whatsapp FROM configuracoes LIMIT 1')
-    whatsapp_grafica = cursor.fetchone()['whatsapp']
+    row = cursor.fetchone()
+    whatsapp_grafica = row['whatsapp'] if row else '5511999998888'
     conn.close()
 
     msg = "🚀 *Gráfica Rápida Express*\nTeste de conexão com a Evolution API realizado com sucesso!"
-    sucesso, mensagem_retorno = send_evolution_whatsapp(whatsapp_grafica, msg)
+    
+    sucesso, mensagem_retorno = send_evolution_whatsapp(
+        whatsapp_grafica, 
+        msg,
+        custom_url=custom_url,
+        custom_key=custom_key,
+        custom_instance=custom_instance
+    )
 
     if sucesso:
-        return jsonify({'message': f"Teste de WhatsApp enviado com sucesso para {whatsapp_grafica}!"})
+        return jsonify({
+            'success': True, 
+            'message': f"Teste de WhatsApp enviado com sucesso para {whatsapp_grafica}!",
+            'resposta': mensagem_retorno
+        })
     else:
-        return jsonify({'error': f"Falha ao enviar via Evolution API: {mensagem_retorno}"}), 400
+        return jsonify({
+            'success': False, 
+            'error': f"Falha ao enviar via Evolution API: {mensagem_retorno}"
+        }), 400
 
 # --- APIS DO CLIENTE PROTEGIDAS ---
 

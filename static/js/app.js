@@ -1712,7 +1712,7 @@ async function testarEvolutionAPI() {
   const instance = document.getElementById('cfg-evolution-instance').value.trim();
 
   if (!url || !key || !instance) {
-    alert('Por favor, preencha a URL, API Key e Nome da Instância para testar.');
+    alert('Por favor, preencha a URL da Evolution API, a API Key e o Nome da Instância para testar.');
     return;
   }
 
@@ -1728,13 +1728,13 @@ async function testarEvolutionAPI() {
     const data = await res.json();
 
     if (res.ok && data.success) {
-      alert(`✅ Conexão com Evolution API estabelecida com sucesso!\nStatus HTTP: ${data.status_code}\n\nResposta da API:\n${JSON.stringify(data.resposta, null, 2)}`);
+      alert(`✅ Conexão com Evolution API estabelecida com sucesso!\n\n${data.message}`);
     } else {
-      alert(`❌ Erro ao conectar com Evolution API:\n${data.error || 'Instância ou chave inválida'}`);
+      alert(`❌ Erro ao conectar com Evolution API:\n${data.error || 'Instância não conectada ou chave inválida.'}`);
     }
   } catch (err) {
     console.error('Erro testar Evolution API:', err);
-    alert('Erro de conexão ou requisição.');
+    alert('Erro ao se comunicar com o servidor. Verifique a URL informada.');
   }
 }
 
