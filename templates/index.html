@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gráfica Rápida Express | Impressão Profissional & Entrega Rápida</title>
+  
+  <!-- Google Fonts & FontAwesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Design System CSS -->
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <div class="top-bar" id="top-bar-aviso">
+    ⚡ Atendimento Express: Pedidos feitos até as 12h ficam prontos no mesmo dia!
+  </div>
+
+  <!-- Header Navbar -->
+  <header class="header-navbar">
+    <div class="header-container">
+      <div class="brand-logo" onclick="switchView('cliente')">
+        <div class="logo-icon">
+          <i class="fa-solid fa-print"></i>
+        </div>
+        <div>
+          <span id="brand-name">Gráfica Rápida Express</span>
+          <div style="font-size: 0.72rem; color: var(--cyan); font-weight: 700; margin-top: -2px;">EXPRESS PRINT ONLINE</div>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <div class="nav-link active" onclick="switchView('cliente')" id="nav-catalogo">
+          <i class="fa-solid fa-store"></i> Loja
+        </div>
+        <div class="nav-link" onclick="switchView('portal-cliente')" id="nav-portal-cliente">
+          <i class="fa-solid fa-user-gear"></i> Área do Cliente
+        </div>
+        <div class="nav-link" onclick="openMeusPedidosModal()" id="nav-meus-pedidos">
+          <i class="fa-solid fa-box-open"></i> Rastrear Pedido
+        </div>
+        <div class="nav-link" onclick="falarWhatsApp()" id="nav-whatsapp">
+          <i class="fa-brands fa-whatsapp" style="color: #25d366;"></i> Atendimento
+        </div>
+      </nav>
+
+      <div class="header-actions">
+        <button class="btn btn-secondary btn-sm" onclick="toggleTheme()" title="Alternar Modo Escuro/Claro">
+          <i class="fa-solid fa-moon" id="theme-icon"></i>
+        </button>
+
+        <button class="btn btn-primary btn-sm" onclick="toggleCartDrawer()">
+          <i class="fa-solid fa-cart-shopping"></i> Carrinho
+          <span class="badge badge-warning" id="cart-count" style="margin-left: 4px;">0</span>
+        </button>
+
+        <button class="btn btn-secondary btn-sm" onclick="abrirLoginAdminModal()" id="btn-admin-toggle">
+          <i class="fa-solid fa-user-shield"></i> Painel Admin
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================================== -->
+  <!-- LOJA DO CLIENTE (HOME / CATÁLOGO)                                          -->
+  <!-- ========================================================================== -->
+  <main id="view-cliente">
+    
+    <!-- Hero Banner -->
+    <section class="hero-banner">
+      <div class="hero-content">
+        <span class="hero-badge">
+          <i class="fa-solid fa-shield-halved"></i> Ambiente 100% Seguro & Protegido
+        </span>
+        <h1 class="hero-title" id="banner-titulo">Sua Impressão Rápida, Sem Complicação!</h1>
+        <p class="hero-subtitle" id="banner-subtitulo">
+          Cartões de visita, panfletos, banners, adesivos e brindes com entrega expressa e qualidade profissional.
+        </p>
+
+        <div style="display: flex; gap: 14px; flex-wrap: wrap;">
+          <a href="#catalogo" class="btn btn-primary">
+            <i class="fa-solid fa-list-check"></i> Ver Produtos & Orçamento
+          </a>
+          <button class="btn btn-secondary" onclick="switchView('portal-cliente')">
+            <i class="fa-solid fa-circle-user"></i> Acessar Minha Conta
+          </button>
+        </div>
+
+        <div class="hero-stats">
+          <div class="stat-item">
+            <span class="stat-num">100%</span>
+            <span class="stat-label">Garantia de Cor</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-num">24h</span>
+            <span class="stat-label">Produção Express</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-num">5.0 ★</span>
+            <span class="stat-label">+2.500 Clientes</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Catalog Header & Category Tabs -->
+    <section id="catalogo">
+      <div class="section-header">
+        <h2 class="section-title">Nossos Produtos Gráficos</h2>
+        <div style="color: var(--text-muted); font-size: 0.9rem;">Escolha o produto e personalize suas opções</div>
+      </div>
+
+      <div class="category-tabs" id="category-tabs">
+        <button class="tab-btn active" onclick="filterCategory('Todos', this)">Todos os Produtos</button>
+        <button class="tab-btn" onclick="filterCategory('Cartões', this)"><i class="fa-solid fa-id-card"></i> Cartões de Visita</button>
+        <button class="tab-btn" onclick="filterCategory('Panfletos', this)"><i class="fa-solid fa-newspaper"></i> Panfletos & Folders</button>
+        <button class="tab-btn" onclick="filterCategory('Banners', this)"><i class="fa-solid fa-scroll"></i> Banners em Lona</button>
+        <button class="tab-btn" onclick="filterCategory('Adesivos', this)"><i class="fa-solid fa-note-sticky"></i> Adesivos Vinil</button>
+        <button class="tab-btn" onclick="filterCategory('Talões', this)"><i class="fa-solid fa-book-bookmark"></i> Talões & Blocos</button>
+        <button class="tab-btn" onclick="filterCategory('Envelopes', this)"><i class="fa-solid fa-envelope"></i> Envelopes</button>
+      </div>
+
+      <!-- Catalog Grid -->
+      <div class="catalog-grid" id="catalog-grid">
+        <!-- Injetado via JS -->
+      </div>
+    </section>
+  </main>
+
+  <!-- ========================================================================== -->
+  <!-- PORTAL EXCLUSIVO DO CLIENTE (AUTENTICADO)                                  -->
+  <!-- ========================================================================== -->
+  <main id="view-portal-cliente" class="portal-container" style="display: none;">
+    <!-- Renderizado se Deslogado -->
+    <div id="portal-deslogado" style="text-align: center; padding: 40px 20px;">
+      <i class="fa-solid fa-lock" style="font-size: 3.5rem; color: var(--primary); margin-bottom: 16px;"></i>
+      <h2 style="font-size: 1.8rem; font-weight: 800; margin-bottom: 8px;">Área do Cliente Protegida</h2>
+      <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 500px; margin: 0 auto 24px;">
+        Para proteger suas artes, logotipos e histórico de compras contra vazamento de dados, faça o login ou crie sua conta gratuita.
+      </p>
+      <button class="btn btn-primary" onclick="openModal('modal-auth-cliente')">
+        <i class="fa-solid fa-right-to-bracket"></i> Entrar ou Criar Conta
+      </button>
+    </div>
+
+    <!-- Renderizado se Logado -->
+    <div id="portal-logado" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 14px;">
+        <div>
+          <h2 style="font-size: 1.8rem; font-weight: 800;">
+            <i class="fa-solid fa-circle-user" style="color: var(--primary);"></i> Olá, <span id="cli-perfil-nome">Cliente</span>!
+          </h2>
+          <p style="color: var(--text-muted); font-size: 0.9rem;" id="cli-perfil-email">cliente@email.com</p>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="logoutCliente()" style="color: var(--danger);">
+          <i class="fa-solid fa-right-from-bracket"></i> Sair da Conta
+        </button>
+      </div>
+
+      <!-- Portal Navigation Tabs -->
+      <div class="portal-tabs">
+        <div class="portal-tab active" onclick="switchPortalTab('historico', this)">
+          <i class="fa-solid fa-clock-rotate-left"></i> Meus Pedidos
+        </div>
+        <div class="portal-tab" onclick="switchPortalTab('artes', this)">
+          <i class="fa-solid fa-images"></i> Minhas Artes & Logotipos
+        </div>
+        <div class="portal-tab" onclick="switchPortalTab('orcamento', this)">
+          <i class="fa-solid fa-file-signature"></i> Pedir Orçamento Sob Medida
+        </div>
+      </div>
+
+      <!-- TAB: HISTÓRICO DE PEDIDOS & REORDENAR -->
+      <div id="portal-tab-historico">
+        <div id="portal-pedidos-lista">
+          <!-- Injetado via JS -->
+        </div>
+      </div>
+
+      <!-- TAB: MINHAS ARTES SALVAS -->
+      <div id="portal-tab-artes" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <div style="font-weight: 700; font-size: 1.1rem;">Sua Biblioteca Privada de Logotipos</div>
+          <button class="btn btn-primary btn-sm" onclick="document.getElementById('input-portal-arte-file').click()">
+            <i class="fa-solid fa-cloud-arrow-up"></i> Salvar Nova Arte
+          </button>
+          <input type="file" id="input-portal-arte-file" style="display: none;" onchange="uploadPortalArteFile(this)">
+        </div>
+
+        <div class="catalog-grid" id="portal-artes-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); margin-bottom: 0;">
+          <!-- Injetado via JS -->
+        </div>
+      </div>
+
+      <!-- TAB: PEDIR ORÇAMENTO SOB MEDIDA -->
+      <div id="portal-tab-orcamento" style="display: none;">
+        <div class="table-wrap" style="padding: 28px; max-width: 700px;">
+          <h3 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 14px;">Solicitar Orçamento de Projeto Especial</h3>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
+            Precisa de fachadas em ACM, letreiros iluminados, adesivação de frotas ou tiragens especiais? Descreva seu projeto:
+          </p>
+          <form onsubmit="solicitarOrcamentoCliente(event)">
+            <div class="form-group">
+              <label class="form-label">Descrição Detalhada do Projeto *</label>
+              <textarea class="form-control" id="orc-cli-desc" rows="4" placeholder="Ex: Preciso de 2 faixas de lona 3x1m para fachada de loja + adesivação de 2 carros..." required></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+              <i class="fa-solid fa-paper-plane"></i> Enviar Solicitação de Orçamento
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ========================================================================== -->
+  <!-- PAINEL ADMINISTRATIVO COMPLETO                                             -->
+  <!-- ========================================================================== -->
+  <div id="view-admin" class="admin-layout" style="display: none;">
+    <!-- Sidebar -->
+    <aside class="admin-sidebar">
+      <div style="font-size: 1.1rem; font-weight: 800; color: white; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <i class="fa-solid fa-sliders" style="color: var(--cyan);"></i> Admin Panel
+        </span>
+        <button onclick="logoutAdmin()" title="Sair do Admin" style="background: transparent; border: none; color: var(--danger); cursor: pointer; font-size: 1.1rem;">
+          <i class="fa-solid fa-power-off"></i>
+        </button>
+      </div>
+
+      <div class="sidebar-menu">
+        <div class="sidebar-item active" onclick="switchAdminTab('dashboard', this)">
+          <i class="fa-solid fa-chart-line"></i> Dashboard
+        </div>
+        <div class="sidebar-item" onclick="switchAdminTab('kanban', this)">
+          <i class="fa-solid fa-table-columns"></i> Kanban Produção
+        </div>
+        <div class="sidebar-item" onclick="switchAdminTab('pedidos', this)">
+          <i class="fa-solid fa-receipt"></i> Lista Pedidos
+        </div>
+        <div class="sidebar-item" onclick="switchAdminTab('produtos', this)">
+          <i class="fa-solid fa-boxes-stacked"></i> Produtos (CRUD)
+        </div>
+        <div class="sidebar-item" onclick="switchAdminTab('estoque', this)">
+          <i class="fa-solid fa-warehouse"></i> Estoque Insumos
+        </div>
+        <div class="sidebar-item" onclick="switchAdminTab('caixa', this)">
+          <i class="fa-solid fa-cash-register"></i> Caixa & Financeiro
+        </div>
+        <div class="sidebar-item" onclick="switchAdminTab('orcamentos', this)">
+          <i class="fa-solid fa-calculator"></i> Orçamentista
+        </div>
+        <div class="sidebar-item" onclick="switchAdminTab('cupons', this)">
+          <i class="fa-solid fa-ticket"></i> Cupons Desconto
+        </div>
+        <div class="sidebar-item" onclick="switchAdminTab('clientes', this)">
+          <i class="fa-solid fa-users"></i> Clientes VIP
+        </div>
+        <div class="sidebar-item" onclick="switchAdminTab('config', this)">
+          <i class="fa-solid fa-gear"></i> Configurações Site
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+      
+      <!-- TAB: DASHBOARD -->
+      <div id="admin-tab-dashboard">
+        <div class="section-header" style="margin-top: 0;">
+          <h2 class="section-title">Resumo Operacional</h2>
+          <button class="btn btn-secondary btn-sm" onclick="loadDashboardMetrics()">
+            <i class="fa-solid fa-arrows-rotate"></i> Atualizar
+          </button>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-header">
+              <span>Faturamento Total</span>
+              <i class="fa-solid fa-dollar-sign" style="color: var(--success);"></i>
+            </div>
+            <div class="metric-value" id="dash-faturamento">R$ 0,00</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-header">
+              <span>Pedidos Totais</span>
+              <i class="fa-solid fa-box-open" style="color: var(--primary);"></i>
+            </div>
+            <div class="metric-value" id="dash-pedidos-total">0</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-header">
+              <span>Em Produção</span>
+              <i class="fa-solid fa-spinner" style="color: var(--warning);"></i>
+            </div>
+            <div class="metric-value" id="dash-pedidos-producao">0</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-header">
+              <span>Clientes Cadastrados</span>
+              <i class="fa-solid fa-user-group" style="color: var(--cyan);"></i>
+            </div>
+            <div class="metric-value" id="dash-clientes">0</div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <div style="padding: 20px; font-weight: 800; font-size: 1.1rem; border-bottom: 1px solid var(--border-color);">
+            <i class="fa-solid fa-clock-rotate-left"></i> Últimos Pedidos Recebidos
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Cliente</th>
+                <th>Total</th>
+                <th>Pagamento</th>
+                <th>Status Produção</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="dash-pedidos-tbody">
+              <!-- Injetado via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB: KANBAN DE PRODUÇÃO -->
+      <div id="admin-tab-kanban" style="display: none;">
+        <div class="section-header" style="margin-top: 0;">
+          <h2 class="section-title">Quadro Kanban da Linha de Impressão</h2>
+          <button class="btn btn-secondary btn-sm" onclick="loadKanbanBoard()">
+            <i class="fa-solid fa-arrows-rotate"></i> Atualizar Kanban
+          </button>
+        </div>
+
+        <div class="kanban-board">
+          <div class="kanban-col">
+            <div class="kanban-col-header" style="color: var(--warning);">
+              <span>1. Análise de Arte</span>
+              <span class="badge badge-warning" id="kanban-count-analise">0</span>
+            </div>
+            <div id="kanban-cards-analise"></div>
+          </div>
+
+          <div class="kanban-col">
+            <div class="kanban-col-header" style="color: var(--primary);">
+              <span>2. Em Impressão</span>
+              <span class="badge badge-info" id="kanban-count-impressao">0</span>
+            </div>
+            <div id="kanban-cards-impressao"></div>
+          </div>
+
+          <div class="kanban-col">
+            <div class="kanban-col-header" style="color: var(--magenta);">
+              <span>3. Acabamento / Corte</span>
+              <span class="badge badge-info" id="kanban-count-acabamento">0</span>
+            </div>
+            <div id="kanban-cards-acabamento"></div>
+          </div>
+
+          <div class="kanban-col">
+            <div class="kanban-col-header" style="color: var(--success);">
+              <span>4. Pronto / Expedição</span>
+              <span class="badge badge-success" id="kanban-count-pronto">0</span>
+            </div>
+            <div id="kanban-cards-pronto"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: PEDIDOS -->
+      <div id="admin-tab-pedidos" style="display: none;">
+        <div class="section-header" style="margin-top: 0;">
+          <h2 class="section-title">Gerenciador de Pedidos</h2>
+          <div style="display: flex; gap: 10px;">
+            <input type="text" class="form-control" id="admin-pedidos-search" placeholder="Buscar por código ou cliente..." oninput="loadAdminPedidos()">
+            <select class="form-control" id="admin-pedidos-filter" onchange="loadAdminPedidos()">
+              <option value="Todos">Todos os Status</option>
+              <option value="Aguardando Pagamento">Aguardando Pagamento</option>
+              <option value="Em Análise de Arte">Em Análise de Arte</option>
+              <option value="Em Impressão">Em Impressão</option>
+              <option value="Acabamento & Corte">Acabamento & Corte</option>
+              <option value="Pronto para Retirada">Pronto para Retirada</option>
+              <option value="Entregue">Entregue</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Código</th>
+                <th>Cliente / Contato</th>
+                <th>Total</th>
+                <th>Pagamento</th>
+                <th>Status Produção</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="admin-pedidos-tbody">
+              <!-- Injetado via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB: PRODUTOS (CRUD) -->
+      <div id="admin-tab-produtos" style="display: none;">
+        <div class="section-header" style="margin-top: 0;">
+          <h2 class="section-title">Catálogo de Produtos</h2>
+          <button class="btn btn-primary" onclick="openProdutoModal()">
+            <i class="fa-solid fa-plus"></i> Novo Produto
+          </button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Imagem</th>
+                <th>Nome</th>
+                <th>Categoria</th>
+                <th>Preço Base</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="admin-produtos-tbody">
+              <!-- Injetado via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB: ESTOQUE DE INSUMOS -->
+      <div id="admin-tab-estoque" style="display: none;">
+        <div class="section-header" style="margin-top: 0;">
+          <h2 class="section-title">Controle de Estoque de Insumos</h2>
+          <button class="btn btn-primary" onclick="openInsumoModal()">
+            <i class="fa-solid fa-boxes-packing"></i> Novo Insumo
+          </button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Insumo</th>
+                <th>Categoria</th>
+                <th>Estoque Atual</th>
+                <th>Estoque Mínimo</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="admin-estoque-tbody">
+              <!-- Injetado via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB: CONTROLE DE CAIXA -->
+      <div id="admin-tab-caixa" style="display: none;">
+        <div class="section-header" style="margin-top: 0;">
+          <h2 class="section-title">Fluxo de Caixa & Financeiro</h2>
+          <button class="btn btn-primary" onclick="openCaixaMovimentoModal()">
+            <i class="fa-solid fa-hand-holding-dollar"></i> Lançar Entrada / Saída
+          </button>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-header">
+              <span>Total Entradas</span>
+              <i class="fa-solid fa-arrow-down" style="color: var(--success);"></i>
+            </div>
+            <div class="metric-value" style="color: var(--success);" id="caixa-entradas">R$ 0,00</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-header">
+              <span>Total Saídas</span>
+              <i class="fa-solid fa-arrow-up" style="color: var(--danger);"></i>
+            </div>
+            <div class="metric-value" style="color: var(--danger);" id="caixa-saidas">R$ 0,00</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-header">
+              <span>Saldo em Caixa</span>
+              <i class="fa-solid fa-wallet" style="color: var(--primary);"></i>
+            </div>
+            <div class="metric-value" id="caixa-saldo">R$ 0,00</div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <div style="padding: 20px; font-weight: 800; font-size: 1.1rem; border-bottom: 1px solid var(--border-color);">
+            <i class="fa-solid fa-list"></i> Histórico de Movimentações
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Tipo</th>
+                <th>Categoria</th>
+                <th>Descrição</th>
+                <th>Forma Pagto</th>
+                <th>Valor</th>
+              </tr>
+            </thead>
+            <tbody id="caixa-movimentacoes-tbody">
+              <!-- Injetado via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB: ORÇAMENTISTA -->
+      <div id="admin-tab-orcamentos" style="display: none;">
+        <div class="section-header" style="margin-top: 0;">
+          <h2 class="section-title">Gerador de Orçamentos Manuais</h2>
+          <button class="btn btn-primary" onclick="openOrcamentoModal()">
+            <i class="fa-solid fa-file-circle-plus"></i> Novo Orçamento
+          </button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Cliente</th>
+                <th>Descrição</th>
+                <th>Valor Estimado</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="admin-orcamentos-tbody">
+              <!-- Injetado via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB: CUPONS DE DESCONTO -->
+      <div id="admin-tab-cupons" style="display: none;">
+        <div class="section-header" style="margin-top: 0;">
+          <h2 class="section-title">Gerenciador de Cupons</h2>
+          <button class="btn btn-primary" onclick="openCupomModal()">
+            <i class="fa-solid fa-ticket"></i> Criar Cupom
+          </button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Desconto (%)</th>
+                <th>Valor Mínimo</th>
+                <th>Usos / Limite</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="admin-cupons-tbody">
+              <!-- Injetado via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB: CLIENTES VIP -->
+      <div id="admin-tab-clientes" style="display: none;">
+        <div class="section-header" style="margin-top: 0;">
+          <h2 class="section-title">Base de Clientes VIP</h2>
+        </div>
+
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>WhatsApp</th>
+                <th>E-mail</th>
+                <th>Total Pedidos</th>
+                <th>Total Gasto</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="admin-clientes-tbody">
+              <!-- Injetado via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB: CONFIGURAÇÕES SITE (CMS) -->
+      <div id="admin-tab-config" style="display: none;">
+        <div class="section-header" style="margin-top: 0;">
+          <h2 class="section-title">Configurações Gerais do Site</h2>
+        </div>
+
+        <div class="table-wrap" style="padding: 28px; max-width: 700px;">
+          <form id="form-config" onsubmit="salvarConfiguracoes(event)">
+            <div class="form-group">
+              <label class="form-label">Nome da Gráfica</label>
+              <input type="text" class="form-control" id="cfg-nome-grafica" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">WhatsApp (com DDD ex: 5511999998888)</label>
+              <input type="text" class="form-control" id="cfg-whatsapp" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Chave PIX (E-mail, CNPJ ou Celular)</label>
+              <input type="text" class="form-control" id="cfg-chave-pix" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Título do Banner Principal</label>
+              <input type="text" class="form-control" id="cfg-banner-titulo" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Subtítulo do Banner</label>
+              <textarea class="form-control" id="cfg-banner-subtitulo" rows="2" required></textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Aviso do Topo</label>
+              <input type="text" class="form-control" id="cfg-aviso-topo" required>
+            </div>
+
+            <div style="display: flex; gap: 14px;">
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Desconto PIX (%)</label>
+                <input type="number" step="0.1" class="form-control" id="cfg-desconto-pix" required>
+              </div>
+
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Taxa de Entrega Padrão (R$)</label>
+                <input type="number" step="0.1" class="form-control" id="cfg-taxa-entrega" required>
+              </div>
+            </div>
+
+            <!-- EVOLUTION API INTEGRATION (WHATSAPP OTP) -->
+            <div style="margin-top: 28px; padding-top: 20px; border-top: 2px dashed var(--border-color);">
+              <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--cyan); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-brands fa-whatsapp" style="color: #25d366; font-size: 1.4rem;"></i> Configurações Evolution API (WhatsApp Verification)
+              </h4>
+
+              <div class="form-group">
+                <label class="form-label">URL da Evolution API *</label>
+                <input type="url" class="form-control" id="cfg-evolution-url" placeholder="https://api.evolution.suadominio.com">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">API Key / Token Global *</label>
+                <input type="password" class="form-control" id="cfg-evolution-key" placeholder="Sua Chave Secreta apikey">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Nome da Instância Conectada *</label>
+                <input type="text" class="form-control" id="cfg-evolution-instance" placeholder="ex: GraficaExpress">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Validar WhatsApp dos Clientes no Cadastro?</label>
+                <select class="form-control" id="cfg-evolution-active">
+                  <option value="1">✅ Sim (Enviar código OTP de 6 dígitos via WhatsApp)</option>
+                  <option value="0">❌ Não (Cadastrar direto sem validação)</option>
+                </select>
+              </div>
+
+              <button type="button" class="btn btn-secondary" onclick="testarEvolutionAPI()" style="width: 100%; margin-bottom: 10px;">
+                <i class="fa-solid fa-plug-circle-check"></i> Testar Conexão WhatsApp Evolution API
+              </button>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+              <i class="fa-solid fa-floppy-disk"></i> Salvar Alterações
+            </button>
+          </form>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ========================================================================== -->
+  <!-- MODAIS DE AUTENTICAÇÃO (CLIENTE & ADMIN)                                   -->
+  <!-- ========================================================================== -->
+
+  <!-- MODAL: LOGIN / CADASTRO DO CLIENTE -->
+  <div class="modal-overlay" id="modal-auth-cliente">
+    <div class="modal-container" style="max-width: 460px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="auth-cli-title">Minha Conta do Cliente</h3>
+        <button class="modal-close" onclick="closeModal('modal-auth-cliente')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Tabs de login / cadastro -->
+        <div id="wrap-auth-cli-tabs" style="display: flex; border-bottom: 2px solid var(--border-color); margin-bottom: 20px;">
+          <div id="tab-btn-cli-login" class="portal-tab active" style="flex: 1; text-align: center;" onclick="switchAuthCliTab('login')">Entrar</div>
+          <div id="tab-btn-cli-cad" class="portal-tab" style="flex: 1; text-align: center;" onclick="switchAuthCliTab('cad')">Criar Conta</div>
+        </div>
+
+        <!-- Form Login Cliente -->
+        <form id="form-auth-cli-login" onsubmit="loginCliente(event)">
+          <div class="form-group">
+            <label class="form-label">Seu E-mail *</label>
+            <input type="email" class="form-control" id="auth-cli-email" required placeholder="seu@email.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Sua Senha *</label>
+            <input type="password" class="form-control" id="auth-cli-senha" required placeholder="••••••••">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">
+            <i class="fa-solid fa-right-to-bracket"></i> Acessar Minha Conta
+          </button>
+        </form>
+
+        <!-- Form Cadastro Cliente -->
+        <form id="form-auth-cli-cad" style="display: none;" onsubmit="cadastrarCliente(event)">
+          <div class="form-group">
+            <label class="form-label">Seu Nome Completo *</label>
+            <input type="text" class="form-control" id="cad-cli-nome" required placeholder="João da Silva">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Seu E-mail *</label>
+            <input type="email" class="form-control" id="cad-cli-email" required placeholder="joao@email.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Seu WhatsApp com DDD *</label>
+            <input type="text" class="form-control" id="cad-cli-telefone" required placeholder="11999998888">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Crie uma Senha *</label>
+            <input type="password" class="form-control" id="cad-cli-senha" required placeholder="Mínimo 6 caracteres">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">
+            <i class="fa-solid fa-user-plus"></i> Concluir Cadastro
+          </button>
+        </form>
+
+        <!-- Form Validação de Código OTP WhatsApp -->
+        <form id="form-auth-cli-validar" style="display: none;" onsubmit="validarCodigoCliente(event)">
+          <input type="hidden" id="validar-cli-id">
+          <div style="text-align: center; margin-bottom: 18px;">
+            <i class="fa-brands fa-whatsapp" style="font-size: 3rem; color: #25d366; margin-bottom: 8px;"></i>
+            <h4 style="font-size: 1.2rem; font-weight: 800;">Validação de Segurança</h4>
+            <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 4px;">
+              Enviamos um código de verificação de 6 dígitos para o seu WhatsApp. Digite-o abaixo para ativar sua conta:
+            </p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" style="text-align: center; display: block;">Código de Verificação OTP *</label>
+            <input type="text" class="form-control" id="validar-cli-codigo" required maxlength="6" placeholder="123456" style="text-align: center; font-size: 1.5rem; letter-spacing: 6px; font-weight: 800; color: var(--primary);">
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%;">
+            <i class="fa-solid fa-circle-check"></i> Confirmar & Ativar Conta
+          </button>
+
+          <div style="text-align: center; margin-top: 14px;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="reenviarCodigoWhatsApp(event)">
+              <i class="fa-solid fa-arrows-rotate"></i> Reenviar Código via WhatsApp
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: LOGIN DO ADMINISTRADOR -->
+  <div class="modal-overlay" id="modal-auth-admin">
+    <div class="modal-container" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fa-solid fa-user-shield" style="color: var(--cyan);"></i> Login do Administrador</h3>
+        <button class="modal-close" onclick="closeModal('modal-auth-admin')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="loginAdmin(event)">
+          <div class="form-group">
+            <label class="form-label">Usuário Administrativo *</label>
+            <input type="text" class="form-control" id="auth-adm-user" required value="admin">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Senha de Acesso *</label>
+            <input type="password" class="form-control" id="auth-adm-pass" required placeholder="••••••••">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">
+            <i class="fa-solid fa-lock-open"></i> Acessar Painel de Controle
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CALCULADORA PRODUTO -->
+  <div class="modal-overlay" id="modal-produto">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-prod-title">Personalize seu Pedido</h3>
+        <button class="modal-close" onclick="closeModal('modal-produto')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="modal-prod-id">
+        <p id="modal-prod-desc" style="color: var(--text-muted); margin-bottom: 20px;"></p>
+
+        <div class="option-group">
+          <div class="option-title">1. Formato / Tamanho</div>
+          <div class="options-grid" id="opt-tamanhos"></div>
+        </div>
+
+        <div class="option-group">
+          <div class="option-title">2. Papel / Gramatura</div>
+          <div class="options-grid" id="opt-papeis"></div>
+        </div>
+
+        <div class="option-group">
+          <div class="option-title">3. Acabamento Profissional</div>
+          <div class="options-grid" id="opt-acabamentos"></div>
+        </div>
+
+        <div class="option-group">
+          <div class="option-title">4. Quantidade / Tiragem (Desconto Progressivo)</div>
+          <div class="options-grid" id="opt-tiragens"></div>
+        </div>
+
+        <div class="option-group">
+          <div class="option-title">5. Arquivo da Arte Impressa</div>
+          <div style="display: flex; gap: 14px; margin-bottom: 14px;">
+            <label style="flex: 1; display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer;">
+              <input type="radio" name="opcao-arte" value="propria" checked onchange="toggleArteOpcoes()"> Tenho Arte Pronta
+            </label>
+            <label style="flex: 1; display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer;">
+              <input type="radio" name="opcao-arte" value="criar" onchange="toggleArteOpcoes()"> Criar Arte p/ Mim (+R$ 35,00)
+            </label>
+          </div>
+
+          <div id="wrap-upload-arte" class="dropzone" onclick="document.getElementById('input-file-arte').click()">
+            <i class="fa-solid fa-cloud-arrow-up dropzone-icon"></i>
+            <div style="font-weight: 700;">Clique para enviar seu arquivo (PDF, CDR, PNG, JPG)</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;" id="filename-uploaded">Até 32MB</div>
+            <input type="file" id="input-file-arte" style="display: none;" onchange="uploadArteFile(this)">
+          </div>
+
+          <div id="wrap-detalhes-arte" style="display: none;">
+            <textarea class="form-control" id="detalhes-arte-txt" placeholder="Descreva como deseja a sua arte (Cores, Textos, Logotipo, Contatos)..."></textarea>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+          <div>
+            <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700;">VALOR TOTAL DO ITEM</span>
+            <div style="font-size: 1.8rem; font-weight: 800; color: var(--primary);" id="modal-calc-total">R$ 0,00</div>
+          </div>
+
+          <button class="btn btn-primary" onclick="adicionarAoCarrinho()">
+            <i class="fa-solid fa-cart-plus"></i> Adicionar ao Carrinho
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: RASTREAMENTO -->
+  <div class="modal-overlay" id="modal-meus-pedidos">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fa-solid fa-truck-fast"></i> Rastrear Pedido</h3>
+        <button class="modal-close" onclick="closeModal('modal-meus-pedidos')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display: flex; gap: 10px; margin-bottom: 24px;">
+          <input type="text" class="form-control" id="search-codigo-pedido" placeholder="Digite seu código do pedido (Ex: #GF-0913A1B2)">
+          <button class="btn btn-primary" onclick="consultarPedidoCliente()">
+            <i class="fa-solid fa-magnifying-glass"></i> Buscar
+          </button>
+        </div>
+
+        <div id="detalhes-pedido-rastreio" style="display: none;">
+          <div class="timeline-track" id="timeline-steps">
+            <div class="timeline-step" id="step-pagamento"><div class="step-icon">1</div><div class="step-title">Pagamento</div></div>
+            <div class="timeline-step" id="step-analise"><div class="step-icon">2</div><div class="step-title">Análise Arte</div></div>
+            <div class="timeline-step" id="step-impressao"><div class="step-icon">3</div><div class="step-title">Impressão</div></div>
+            <div class="timeline-step" id="step-acabamento"><div class="step-icon">4</div><div class="step-title">Acabamento</div></div>
+            <div class="timeline-step" id="step-pronto"><div class="step-icon">5</div><div class="step-title">Pronto</div></div>
+            <div class="timeline-step" id="step-entregue"><div class="step-icon">6</div><div class="step-title">Entregue</div></div>
+          </div>
+
+          <div class="table-wrap" style="padding: 20px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 10px;">
+              <span>Pedido: <strong id="tr-codigo"></strong></span>
+              <span class="badge badge-warning" id="tr-status-pag"></span>
+            </div>
+            <div style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 14px;" id="tr-cliente-info"></div>
+
+            <div style="font-weight: 700; margin-bottom: 8px;">Itens do Pedido:</div>
+            <ul id="tr-itens-ul" style="padding-left: 20px; margin-bottom: 14px; font-size: 0.9rem;"></ul>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 12px;">
+              <div>Total: <strong style="font-size: 1.2rem; color: var(--primary);" id="tr-total"></strong></div>
+              <button class="btn btn-secondary btn-sm" onclick="falarWhatsAppPedido()">
+                <i class="fa-brands fa-whatsapp" style="color: #25d366;"></i> Falar no WhatsApp
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DRAWER: CARRINHO DE COMPRAS -->
+  <div class="cart-drawer" id="cart-drawer">
+    <div class="cart-header">
+      <h3 style="font-size: 1.2rem; font-weight: 800;"><i class="fa-solid fa-cart-shopping"></i> Seu Carrinho</h3>
+      <button class="modal-close" onclick="toggleCartDrawer()">&times;</button>
+    </div>
+
+    <div class="cart-body" id="cart-body"></div>
+
+    <div class="cart-footer">
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label class="form-label">Possui Cupom de Desconto?</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" class="form-control" id="checkout-cupom-input" placeholder="Digite o código (ex: VIP15)">
+          <button class="btn btn-secondary btn-sm" onclick="aplicarCupomCheckout()"><i class="fa-solid fa-tag"></i> Aplicar</button>
+        </div>
+        <div id="cupom-msg-feedback" style="font-size: 0.8rem; margin-top: 4px; font-weight: 700;"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Forma de Pagamento</label>
+        <select class="form-control" id="checkout-pagamento" onchange="atualizarTotalCheckout()">
+          <option value="PIX">⚡ PIX (com 5% de Desconto Especial)</option>
+          <option value="Cartao">💳 Cartão de Crédito / Débito</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Opção de Entrega</label>
+        <select class="form-control" id="checkout-entrega" onchange="atualizarTotalCheckout()">
+          <option value="Balcao">🏬 Retirar no Balcão da Gráfica (Grátis)</option>
+          <option value="Entrega">🛵 Entrega Expressa Moto-Boy (+R$ 15,00)</option>
+        </select>
+      </div>
+
+      <div id="wrap-endereco-entrega" style="display: none;" class="form-group">
+        <input type="text" class="form-control" id="checkout-endereco" placeholder="Endereço completo de entrega...">
+      </div>
+
+      <div class="form-group">
+        <input type="text" class="form-control" id="checkout-nome" placeholder="Seu Nome Completo *" required>
+      </div>
+      <div class="form-group">
+        <input type="text" class="form-control" id="checkout-telefone" placeholder="Seu WhatsApp com DDD *" required>
+      </div>
+
+      <div class="cart-total-row">
+        <span>Total:</span>
+        <span id="checkout-total-val" style="color: var(--primary);">R$ 0,00</span>
+      </div>
+
+      <button class="btn btn-primary" style="width: 100%;" onclick="finalizarPedidoCheckout()">
+        <i class="fa-solid fa-shield-check"></i> Finalizar Pedido & Imprimir
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: PIX QRCODE -->
+  <div class="modal-overlay" id="modal-pix">
+    <div class="modal-container" style="max-width: 480px; text-align: center;">
+      <div class="modal-header">
+        <h3 class="modal-title">Pagamento via PIX</h3>
+        <button class="modal-close" onclick="closeModal('modal-pix')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
+          Escaneie o QR Code abaixo ou copie a chave PIX para confirmar o seu pedido!
+        </p>
+
+        <div style="background: white; padding: 20px; display: inline-block; border-radius: 16px; box-shadow: var(--shadow-md); margin-bottom: 16px;">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=00020126580014BR.GOV.BCB.PIX0136pix@graficarapidaexpress.com.br5204000053039865802BR5922GraficaRapidaExpress6009SAOPAULO62070503***63041D3A" alt="QRCode PIX" style="width: 180px; height: 180px;">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Chave PIX Copia e Cola:</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" class="form-control" id="pix-key-input" readonly value="pix@graficarapidaexpress.com.br">
+            <button class="btn btn-secondary" onclick="copiarChavePix()"><i class="fa-solid fa-copy"></i></button>
+          </div>
+        </div>
+
+        <div style="font-size: 0.85rem; color: var(--success); font-weight: 700; margin-bottom: 20px;">
+          ✅ Assim que pagar, envie o comprovante no nosso WhatsApp para agilizar a impressão!
+        </div>
+
+        <button class="btn btn-primary" style="width: 100%;" onclick="confirmarEVerPedido()">
+          <i class="fa-solid fa-circle-check"></i> Já Paguei / Ver Meu Pedido
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORDEM DE SERVIÇO (OS) IMPRESSÃO -->
+  <div id="printable-os" style="display: none; padding: 40px; background: white; color: black;">
+    <div style="text-align: center; border-bottom: 2px solid black; padding-bottom: 14px; margin-bottom: 20px;">
+      <h1 style="font-size: 1.8rem; margin-bottom: 4px;" id="os-grafica-nome">GRÁFICA RÁPIDA EXPRESS</h1>
+      <div>ORDEM DE SERVIÇO / PRODUÇÃO</div>
+    </div>
+    <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+      <div>
+        <div><strong>PEDIDO:</strong> <span id="os-codigo">#GF-0000</span></div>
+        <div><strong>CLIENTE:</strong> <span id="os-cliente">Nome</span></div>
+        <div><strong>CONTATO:</strong> <span id="os-telefone">0000</span></div>
+      </div>
+      <div style="text-align: right;">
+        <div><strong>DATA:</strong> <span id="os-data">00/00/0000</span></div>
+        <div><strong>PAGAMENTO:</strong> <span id="os-pagamento">PIX</span></div>
+        <div><strong>ENTREGA:</strong> <span id="os-entrega">Balcão</span></div>
+      </div>
+    </div>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; border: 1px solid black;">
+      <thead>
+        <tr style="background: #eee;">
+          <th style="border: 1px solid black; padding: 8px;">QTD</th>
+          <th style="border: 1px solid black; padding: 8px;">PRODUTO</th>
+          <th style="border: 1px solid black; padding: 8px;">DETALHES (TAMANHO/PAPEL/ACABAMENTO)</th>
+          <th style="border: 1px solid black; padding: 8px;">SUBTOTAL</th>
+        </tr>
+      </thead>
+      <tbody id="os-itens-tbody"></tbody>
+    </table>
+    <div style="text-align: right; font-size: 1.4rem; font-weight: bold;">
+      TOTAL: <span id="os-total">R$ 0,00</span>
+    </div>
+  </div>
+
+  <!-- JavaScript Main App -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

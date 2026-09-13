@@ -1,0 +1,1283 @@
+import os
+import sys
+import sqlite3
+import json
+import uuid
+import random
+import urllib.request
+import urllib.parse
+from datetime import datetime
+from flask import Flask, render_template, request, jsonify, send_from_directory
+from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
+
+app = Flask(__name__, static_folder='static', template_folder='templates')
+app.config['SECRET_KEY'] = 'grafica-rapida-express-secret-key-2026'
+app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
+app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024  # 32MB max upload
+
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'grafica.db')
+
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Configurações do Site / CMS / Evolution API
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS configuracoes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome_grafica TEXT NOT NULL,
+            whatsapp TEXT NOT NULL,
+            chave_pix TEXT NOT NULL,
+            banner_titulo TEXT,
+            banner_subtitulo TEXT,
+            aviso_topo TEXT,
+            desconto_pix REAL DEFAULT 5.0,
+            taxa_entrega REAL DEFAULT 15.0,
+            evolution_api_url TEXT,
+            evolution_api_key TEXT,
+            evolution_instance TEXT,
+            validar_whatsapp_ativo INTEGER DEFAULT 1
+        )
+    ''')
+    
+    # Migrações das configurações da Evolution API
+    try: cursor.execute('ALTER TABLE configuracoes ADD COLUMN evolution_api_url TEXT')
+    except Exception: pass
+    try: cursor.execute('ALTER TABLE configuracoes ADD COLUMN evolution_api_key TEXT')
+    except Exception: pass
+    try: cursor.execute('ALTER TABLE configuracoes ADD COLUMN evolution_instance TEXT')
+    except Exception: pass
+    try: cursor.execute('ALTER TABLE configuracoes ADD COLUMN validar_whatsapp_ativo INTEGER DEFAULT 1')
+    except Exception: pass
+
+    # Produtos
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS produtos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT NOT NULL,
+            categoria TEXT NOT NULL,
+            descricao TEXT,
+            preco_base REAL NOT NULL,
+            imagem_url TEXT,
+            tamanhos_json TEXT,
+            papeis_json TEXT,
+            acabamentos_json TEXT,
+            tiragens_json TEXT,
+            ativo INTEGER DEFAULT 1,
+            destaque INTEGER DEFAULT 0
+        )
+    ''')
+
+    # Clientes com Autenticação e Código WhatsApp
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS clientes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            telefone TEXT NOT NULL,
+            senha_hash TEXT NOT NULL,
+            endereco TEXT,
+            cpf_cnpj TEXT,
+            token_sessao TEXT,
+            codigo_validacao TEXT,
+            status_validacao TEXT DEFAULT 'Pendente',
+            data_cadastro DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    try: cursor.execute('ALTER TABLE clientes ADD COLUMN senha_hash TEXT')
+    except Exception: pass
+    try: cursor.execute('ALTER TABLE clientes ADD COLUMN token_sessao TEXT')
+    except Exception: pass
+    try: cursor.execute('ALTER TABLE clientes ADD COLUMN codigo_validacao TEXT')
+    except Exception: pass
+    try: cursor.execute('ALTER TABLE clientes ADD COLUMN status_validacao TEXT DEFAULT "Pendente"')
+    except Exception: pass
+
+    # Usuários Administradores
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS usuarios_admin (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario TEXT UNIQUE NOT NULL,
+            senha_hash TEXT NOT NULL,
+            nome TEXT NOT NULL,
+            token_sessao TEXT,
+            data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Biblioteca de Artes do Cliente
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS cliente_artes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            cliente_id INTEGER NOT NULL,
+            nome_arquivo TEXT NOT NULL,
+            url_arquivo TEXT NOT NULL,
+            tamanho_bytes INTEGER DEFAULT 0,
+            data_upload DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (cliente_id) REFERENCES clientes(id)
+        )
+    ''')
+
+    # Pedidos
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS pedidos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            codigo_pedido TEXT UNIQUE NOT NULL,
+            cliente_id INTEGER,
+            cliente_nome TEXT NOT NULL,
+            cliente_telefone TEXT NOT NULL,
+            cliente_email TEXT,
+            total REAL NOT NULL,
+            desconto REAL DEFAULT 0.0,
+            taxa_entrega REAL DEFAULT 0.0,
+            metodo_pagamento TEXT NOT NULL,
+            status_pagamento TEXT DEFAULT 'Aguardando Pagamento',
+            status_producao TEXT DEFAULT 'Aguardando Pagamento',
+            tipo_entrega TEXT DEFAULT 'Balcao',
+            endereco_entrega TEXT,
+            observacoes TEXT,
+            cupom_aplicado TEXT,
+            data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+            data_atualizacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (cliente_id) REFERENCES clientes(id)
+        )
+    ''')
+
+    # Itens do Pedido
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS itens_pedido (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pedido_id INTEGER NOT NULL,
+            produto_id INTEGER,
+            produto_nome TEXT NOT NULL,
+            tamanho TEXT,
+            papel TEXT,
+            acabamento TEXT,
+            quantidade INTEGER NOT NULL,
+            preco_unitario REAL NOT NULL,
+            preco_total REAL NOT NULL,
+            arte_url TEXT,
+            criar_arte INTEGER DEFAULT 0,
+            detalhes_arte TEXT,
+            FOREIGN KEY (pedido_id) REFERENCES pedidos(id)
+        )
+    ''')
+
+    # Movimentações de Caixa
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS caixa_movimentacoes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tipo TEXT NOT NULL,
+            categoria TEXT NOT NULL,
+            descricao TEXT NOT NULL,
+            valor REAL NOT NULL,
+            forma_pagamento TEXT DEFAULT 'Dinheiro',
+            pedido_id INTEGER,
+            usuario TEXT DEFAULT 'Admin',
+            data_movimento DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Estoque de Insumos
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS estoque_insumos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome_insumo TEXT NOT NULL,
+            categoria TEXT NOT NULL,
+            quantidade_atual REAL NOT NULL,
+            quantidade_minima REAL NOT NULL,
+            unidade_medida TEXT NOT NULL,
+            custo_unitario REAL DEFAULT 0.0
+        )
+    ''')
+
+    # Orçamentos Personalizados
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS orcamentos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            codigo_orcamento TEXT UNIQUE NOT NULL,
+            cliente_nome TEXT NOT NULL,
+            cliente_telefone TEXT NOT NULL,
+            descricao TEXT NOT NULL,
+            valor_estimado REAL NOT NULL,
+            status TEXT DEFAULT 'Pendente',
+            data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Cupons de Desconto
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS cupons (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            codigo TEXT UNIQUE NOT NULL,
+            porcentagem_desconto REAL NOT NULL,
+            valor_minimo REAL DEFAULT 0.0,
+            limite_usos INTEGER DEFAULT 100,
+            usos_atuais INTEGER DEFAULT 0,
+            ativo INTEGER DEFAULT 1
+        )
+    ''')
+
+    # Configurações Iniciais
+    cursor.execute('SELECT COUNT(*) FROM configuracoes')
+    if cursor.fetchone()[0] == 0:
+        cursor.execute('''
+            INSERT INTO configuracoes (nome_grafica, whatsapp, chave_pix, banner_titulo, banner_subtitulo, aviso_topo, evolution_api_url, evolution_api_key, evolution_instance, validar_whatsapp_ativo)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            'Gráfica Rápida Express',
+            '5511999998888',
+            'pix@graficarapidaexpress.com.br',
+            'Sua Impressão Rápida, Sem Complicação!',
+            'Cartões de visita, panfletos, banners, adesivos e brindes com entrega expressa e qualidade profissional.',
+            '⚡ Atendimento Express: Pedidos feitos até as 12h ficam prontos no mesmo dia!',
+            'https://api.evolution.com.br',
+            'API_KEY_EVOLUTION_EXEMPLO',
+            'grafica-express',
+            1
+        ))
+
+    # Admin Padrão (admin / admin123)
+    cursor.execute('SELECT COUNT(*) FROM usuarios_admin')
+    if cursor.fetchone()[0] == 0:
+        cursor.execute('''
+            INSERT INTO usuarios_admin (usuario, senha_hash, nome)
+            VALUES (?, ?, ?)
+        ''', ('admin', generate_password_hash('admin123'), 'Administrador Geral'))
+
+    # Produtos Iniciais
+    cursor.execute('SELECT COUNT(*) FROM produtos')
+    if cursor.fetchone()[0] == 0:
+        produtos_padrao = [
+            (
+                'Cartão de Visita Premium',
+                'Cartões',
+                'Impressione seus clientes com cartões de alta gramatura e verniz brilhante.',
+                35.00,
+                'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=600&auto=format&fit=crop&q=80',
+                json.dumps(['9 x 5 cm', '9 x 10 cm (Duplo/Dobrado)']),
+                json.dumps(['Couche 300g (Encorpado)', 'Couche 250g', 'Reciclato 240g']),
+                json.dumps(['Verniz UV Total Frente', 'Verniz Localizado + Laminação Fosca', 'Corte Reto Padrão', 'Cantos Arredondados']),
+                json.dumps([
+                    {'qtd': 100, 'preco': 35.00},
+                    {'qtd': 500, 'preco': 65.00},
+                    {'qtd': 1000, 'preco': 95.00},
+                    {'qtd': 2500, 'preco': 180.00}
+                ]),
+                1, 1
+            ),
+            (
+                'Panfletos & Folders Promocionais',
+                'Panfletos',
+                'Divulgue sua empresa com panfletos coloridos de alta definição.',
+                50.00,
+                'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=600&auto=format&fit=crop&q=80',
+                json.dumps(['A6 (10 x 14 cm)', 'A5 (14 x 20 cm)', 'A4 (21 x 29 cm)']),
+                json.dumps(['Couche 115g (Standard)', 'Couche 150g (Premium)', 'Offset 90g']),
+                json.dumps(['Impressão Frente (4x0)', 'Impressão Frente e Verso (4x4)', 'Dobra Central']),
+                json.dumps([
+                    {'qtd': 500, 'preco': 90.00},
+                    {'qtd': 1000, 'preco': 140.00},
+                    {'qtd': 2500, 'preco': 260.00},
+                    {'qtd': 5000, 'preco': 420.00}
+                ]),
+                1, 1
+            ),
+            (
+                'Banner em Lona com Ilhós / Bastão',
+                'Banners',
+                'Alta durabilidade para fachadas, eventos, promoções e sinalização.',
+                60.00,
+                'https://images.unsplash.com/photo-1542744094-3a31b272c490?w=600&auto=format&fit=crop&q=80',
+                json.dumps(['60 x 90 cm', '80 x 120 cm', '100 x 150 cm', '200 x 100 cm']),
+                json.dumps(['Lona 440g Brilho (Alta Resistencia)', 'Lona 440g Fosca Anti-reflexo']),
+                json.dumps(['Bastão de Madeira + Cordão', 'Ilhós nos 4 Cantos', 'Ilhós a cada 50cm']),
+                json.dumps([
+                    {'qtd': 1, 'preco': 60.00},
+                    {'qtd': 3, 'preco': 150.00},
+                    {'qtd': 5, 'preco': 220.00}
+                ]),
+                1, 1
+            ),
+            (
+                'Adesivos & Etiquetas Vinil',
+                'Adesivos',
+                'Adesivos à prova d\'água cortados no formato do seu logotipo.',
+                45.00,
+                'https://images.unsplash.com/photo-1572375992501-4b0892d50c69?w=600&auto=format&fit=crop&q=80',
+                json.dumps(['3 x 3 cm', '5 x 5 cm', '7 x 7 cm', '10 x 10 cm']),
+                json.dumps(['Vinil Brilho Impermeável', 'Vinil Transparente', 'Vinil Fosco']),
+                json.dumps(['Corte Eletrônico Especial', 'Corte Quadrado/Retangular', 'Cartela sem Corte']),
+                json.dumps([
+                    {'qtd': 100, 'preco': 45.00},
+                    {'qtd': 500, 'preco': 110.00},
+                    {'qtd': 1000, 'preco': 190.00}
+                ]),
+                1, 1
+            ),
+            (
+                'Talões & Blocos de Pedidos / Recibos',
+                'Talões',
+                'Blocos autocopiativos personalizados com a marca da sua empresa.',
+                75.00,
+                'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=600&auto=format&fit=crop&q=80',
+                json.dumps(['1/4 de Folha (10 x 15 cm)', '1/2 Folha (15 x 21 cm)', 'A4 (21 x 29 cm)']),
+                json.dumps(['Sulfite 75g (1 Via)', 'Autocopiativo 2 Vias (Branco/Canário)', 'Autocopiativo 3 Vias']),
+                json.dumps(['Blocagem 50 Folhas', 'Numeração Seqüencial', 'Serrilha p/ Destaque']),
+                json.dumps([
+                    {'qtd': 5, 'preco': 75.00},
+                    {'qtd': 10, 'preco': 130.00},
+                    {'qtd': 20, 'preco': 220.00}
+                ]),
+                1, 0
+            ),
+            (
+                'Envelopes Personalizados',
+                'Envelopes',
+                'Envelopes de carta e ofício impressos com sua marca e dados.',
+                85.00,
+                'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=600&auto=format&fit=crop&q=80',
+                json.dumps(['Saco A4 (24 x 34 cm)', 'Ofício (11 x 22 cm)', 'Carta (11 x 16 cm)']),
+                json.dumps(['Offset 90g', 'Offset 120g Encorpado']),
+                json.dumps(['Impressão Frente', 'Aba Gomada / Fita Dupla Face']),
+                json.dumps([
+                    {'qtd': 100, 'preco': 85.00},
+                    {'qtd': 500, 'preco': 210.00},
+                    {'qtd': 1000, 'preco': 360.00}
+                ]),
+                1, 0
+            )
+        ]
+        cursor.executemany('''
+            INSERT INTO produtos (nome, categoria, descricao, preco_base, imagem_url, tamanhos_json, papeis_json, acabamentos_json, tiragens_json, ativo, destaque)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', produtos_padrao)
+
+    # Insumos Iniciais
+    cursor.execute('SELECT COUNT(*) FROM estoque_insumos')
+    if cursor.fetchone()[0] == 0:
+        insumos_padrao = [
+            ('Papel Couche 300g (Folhas A3+)', 'Papéis', 450, 100, 'Folhas', 0.80),
+            ('Papel Couche 115g (Folhas A3+)', 'Papéis', 1200, 250, 'Folhas', 0.35),
+            ('Bobina de Lona 440g Brilho (1.60m)', 'Mídias Grandes', 85, 20, 'Metros', 12.50),
+            ('Bobina de Vinil Adesivo Brilho', 'Adesivos', 110, 30, 'Metros', 9.00),
+            ('Toner Preto Alta Capacidade (CMYK)', 'Suprimentos', 4, 1, 'Unidades', 240.00),
+            ('Toner Ciano / Magenta / Amarelo', 'Suprimentos', 6, 2, 'Kits', 480.00),
+            ('Bastões de Madeira para Banners', 'Acabamentos', 140, 30, 'Metros', 2.20)
+        ]
+        cursor.executemany('''
+            INSERT INTO estoque_insumos (nome_insumo, categoria, quantidade_atual, quantidade_minima, unidade_medida, custo_unitario)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', insumos_padrao)
+
+    # Cupons Iniciais
+    cursor.execute('SELECT COUNT(*) FROM cupons')
+    if cursor.fetchone()[0] == 0:
+        cupons_padrao = [
+            ('PRIMEIRACOMPRA10', 10.0, 50.0, 500, 0, 1),
+            ('VIP15', 15.0, 100.0, 100, 0, 1)
+        ]
+        cursor.executemany('''
+            INSERT INTO cupons (codigo, porcentagem_desconto, valor_minimo, limite_usos, usos_atuais, ativo)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', cupons_padrao)
+
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# --- HELPER EVOLUTION API WHATSAPP ---
+
+def send_evolution_whatsapp(numero, mensagem):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT evolution_api_url, evolution_api_key, evolution_instance, validar_whatsapp_ativo FROM configuracoes LIMIT 1')
+    cfg = dict(cursor.fetchone())
+    conn.close()
+
+    api_url = (cfg.get('evolution_api_url') or '').strip().rstrip('/')
+    api_key = (cfg.get('evolution_api_key') or '').strip()
+    instance = (cfg.get('evolution_instance') or '').strip()
+
+    if not api_url or not api_key or not instance:
+        print(f"[Evolution API Alert] Configurações incompletas da Evolution API. Mensagem enviada para log/console:")
+        try:
+            print(f"-> Para {numero}: {mensagem}")
+        except UnicodeEncodeError:
+            print(f"-> Para {numero}: {mensagem.encode('ascii', 'ignore').decode('ascii')}")
+        return False, "Configurações da Evolution API não preenchidas no painel Admin."
+
+    # Sanitizar número (Apenas números ex: 5511999998888)
+    num_limpo = ''.join(c for c in str(numero) if c.isdigit())
+    if not num_limpo.startswith('55') and len(num_limpo) <= 11:
+        num_limpo = '55' + num_limpo
+
+    endpoint = f"{api_url}/message/sendText/{instance}"
+    payload = json.dumps({"number": num_limpo, "text": mensagem}).encode('utf-8')
+    
+    headers = {
+        'Content-Type': 'application/json',
+        'apikey': api_key,
+        'User-Agent': 'Mozilla/5.0'
+    }
+
+    try:
+        req = urllib.request.Request(endpoint, data=payload, headers=headers, method='POST')
+        with urllib.request.urlopen(req, timeout=10) as response:
+            res_body = response.read().decode('utf-8')
+            print(f"[Evolution API Success] WhatsApp enviado para {num_limpo}: {res_body}")
+            return True, "Mensagem enviada com sucesso!"
+    except Exception as e:
+        print(f"[Evolution API Error] Erro ao enviar mensagem WhatsApp para {num_limpo}: {e}")
+        return False, str(e)
+
+# --- HELPER DE AUTENTICAÇÃO ---
+
+def get_current_client(token):
+    if not token:
+        return None
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, nome, email, telefone, endereco, status_validacao FROM clientes WHERE token_sessao = ?', (token,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def get_current_admin(token):
+    if not token:
+        return None
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, usuario, nome FROM usuarios_admin WHERE token_sessao = ?', (token,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+# --- ROTAS FRONTEND ---
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+# --- APIS DE AUTENTICAÇÃO DO CLIENTE & EVOLUTION API WHATSAPP ---
+
+@app.route('/api/auth/cliente/cadastrar', methods=['POST'])
+def auth_cliente_cadastrar():
+    data = request.json
+    nome = data.get('nome', '').strip()
+    email = data.get('email', '').strip().lower()
+    telefone = data.get('telefone', '').strip()
+    senha = data.get('senha', '')
+
+    if not nome or not email or not telefone or not senha:
+        return jsonify({'error': 'Todos os campos são obrigatórios!'}), 400
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id FROM clientes WHERE email = ?', (email,))
+    if cursor.fetchone():
+        conn.close()
+        return jsonify({'error': 'Já existe uma conta cadastrada com este E-mail!'}), 400
+
+    cursor.execute('SELECT validar_whatsapp_ativo FROM configuracoes LIMIT 1')
+    cfg_row = cursor.fetchone()
+    validar_ativo = cfg_row['validar_whatsapp_ativo'] if cfg_row else 1
+
+    senha_hash = generate_password_hash(senha)
+    codigo_otp = str(random.randint(100000, 999999))
+    status_val = 'Pendente' if validar_ativo == 1 else 'Ativo'
+    token_sessao = uuid.uuid4().hex if status_val == 'Ativo' else None
+
+    cursor.execute('''
+        INSERT INTO clientes (nome, email, telefone, senha_hash, codigo_validacao, status_validacao, token_sessao)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (nome, email, telefone, senha_hash, codigo_otp, status_val, token_sessao))
+
+    conn.commit()
+    cliente_id = cursor.lastrowid
+    conn.close()
+
+    if validar_ativo == 1:
+        msg = f"🔒 *Gráfica Rápida Express*\nOlá {nome}! Seu código de validação de cadastro é: *{codigo_otp}*\n\nDigite este código no site para ativar sua conta!"
+        sucesso, msg_status = send_evolution_whatsapp(telefone, msg)
+        
+        return jsonify({
+            'requer_validacao': True,
+            'cliente_id': cliente_id,
+            'email': email,
+            'telefone': telefone,
+            'codigo_dev': codigo_otp, # Disponibilizado para facilitar testes em dev se API não configurada
+            'message': f"Código de validação enviado para o seu WhatsApp ({telefone})!"
+        }), 201
+    else:
+        return jsonify({
+            'requer_validacao': False,
+            'token': token_sessao,
+            'cliente': {'id': cliente_id, 'nome': nome, 'email': email, 'telefone': telefone},
+            'message': 'Conta criada e ativada com sucesso!'
+        }), 201
+
+@app.route('/api/auth/cliente/validar-codigo', methods=['POST'])
+def auth_cliente_validar_codigo():
+    data = request.json or {}
+    cliente_id = data.get('cliente_id')
+    email = data.get('email', '').strip().lower()
+    codigo = str(data.get('codigo', '')).strip()
+
+    if not codigo or (not cliente_id and not email):
+        return jsonify({'error': 'Informe o código de validação e o ID/E-mail do cliente.'}), 400
+
+    conn = get_db()
+    cursor = conn.cursor()
+    if cliente_id:
+        cursor.execute('SELECT * FROM clientes WHERE id = ?', (cliente_id,))
+    else:
+        cursor.execute('SELECT * FROM clientes WHERE email = ?', (email,))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return jsonify({'error': 'Cliente não encontrado.'}), 404
+
+    if str(row['codigo_validacao']).strip() != codigo:
+        conn.close()
+        return jsonify({'error': 'Código de validação incorreto!'}), 400
+
+    token_sessao = uuid.uuid4().hex
+    cursor.execute('''
+        UPDATE clientes SET status_validacao = 'Ativo', token_sessao = ? WHERE id = ?
+    ''', (token_sessao, row['id']))
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        'message': 'Conta validada com sucesso! Bem-vindo(a).',
+        'token': token_sessao,
+        'cliente': {'id': row['id'], 'nome': row['nome'], 'email': row['email'], 'telefone': row['telefone']}
+    })
+
+@app.route('/api/auth/cliente/reenviar-codigo', methods=['POST'])
+def auth_cliente_reenviar_codigo():
+    data = request.json or {}
+    cliente_id = data.get('cliente_id')
+    email = data.get('email', '').strip().lower()
+
+    if not cliente_id and not email:
+        return jsonify({'error': 'Informe o ID ou E-mail do cliente.'}), 400
+
+    conn = get_db()
+    cursor = conn.cursor()
+    if cliente_id:
+        cursor.execute('SELECT * FROM clientes WHERE id = ?', (cliente_id,))
+    else:
+        cursor.execute('SELECT * FROM clientes WHERE email = ?', (email,))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return jsonify({'error': 'Cliente não encontrado.'}), 404
+
+    novo_codigo = str(random.randint(100000, 999999))
+    cursor.execute('UPDATE clientes SET codigo_validacao = ? WHERE id = ?', (novo_codigo, row['id']))
+    conn.commit()
+    conn.close()
+
+    msg = f"🔒 *Gráfica Rápida Express*\nSeu novo código de validação de cadastro é: *{novo_codigo}*"
+    send_evolution_whatsapp(row['telefone'], msg)
+
+    return jsonify({
+        'message': 'Novo código de validação enviado com sucesso!',
+        'codigo_dev': novo_codigo
+    })
+
+
+
+@app.route('/api/auth/cliente/login', methods=['POST'])
+def auth_cliente_login():
+    data = request.json
+    email = data.get('email', '').strip().lower()
+    senha = data.get('senha', '')
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM clientes WHERE email = ?', (email,))
+    row = cursor.fetchone()
+
+    if not row or not check_password_hash(row['senha_hash'], senha):
+        conn.close()
+        return jsonify({'error': 'E-mail ou senha incorretos!'}), 401
+
+    if row['status_validacao'] == 'Pendente':
+        conn.close()
+        return jsonify({
+            'requer_validacao': True,
+            'email': row['email'],
+            'telefone': row['telefone'],
+            'error': 'Sua conta ainda não foi ativada. Digite o código de validação do WhatsApp.'
+        }), 403
+
+    token_sessao = uuid.uuid4().hex
+    cursor.execute('UPDATE clientes SET token_sessao = ? WHERE id = ?', (token_sessao, row['id']))
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        'message': 'Login realizado com sucesso!',
+        'token': token_sessao,
+        'cliente': {'id': row['id'], 'nome': row['nome'], 'email': row['email'], 'telefone': row['telefone'], 'endereco': row['endereco']}
+    })
+
+@app.route('/api/auth/cliente/me', methods=['GET'])
+def auth_cliente_me():
+    token = request.headers.get('X-Client-Token')
+    cli = get_current_client(token)
+    if not cli:
+        return jsonify({'error': 'Sessão expirada. Faça login novamente.'}), 401
+    return jsonify(cli)
+
+# --- APIS DE AUTENTICAÇÃO DO ADMINISTRADOR & TESTE EVOLUTION API ---
+
+@app.route('/api/auth/admin/login', methods=['POST'])
+def auth_admin_login():
+    data = request.json
+    usuario = data.get('usuario', '').strip()
+    senha = data.get('senha', '')
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM usuarios_admin WHERE usuario = ?', (usuario,))
+    row = cursor.fetchone()
+
+    if not row or not check_password_hash(row['senha_hash'], senha):
+        conn.close()
+        return jsonify({'error': 'Usuário ou senha administrativos inválidos!'}), 401
+
+    token_sessao = uuid.uuid4().hex
+    cursor.execute('UPDATE usuarios_admin SET token_sessao = ? WHERE id = ?', (token_sessao, row['id']))
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        'message': 'Login administrativo confirmado!',
+        'admin_token': token_sessao,
+        'admin': {'id': row['id'], 'usuario': row['usuario'], 'nome': row['nome']}
+    })
+
+@app.route('/api/auth/admin/me', methods=['GET'])
+def auth_admin_me():
+    token = request.headers.get('X-Admin-Token')
+    adm = get_current_admin(token)
+    if not adm:
+        return jsonify({'error': 'Acesso negado.'}), 401
+    return jsonify(adm)
+
+@app.route('/api/admin/testar-evolution', methods=['POST'])
+def testar_evolution_api():
+    token = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token):
+        return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT whatsapp FROM configuracoes LIMIT 1')
+    whatsapp_grafica = cursor.fetchone()['whatsapp']
+    conn.close()
+
+    msg = "🚀 *Gráfica Rápida Express*\nTeste de conexão com a Evolution API realizado com sucesso!"
+    sucesso, mensagem_retorno = send_evolution_whatsapp(whatsapp_grafica, msg)
+
+    if sucesso:
+        return jsonify({'message': f"Teste de WhatsApp enviado com sucesso para {whatsapp_grafica}!"})
+    else:
+        return jsonify({'error': f"Falha ao enviar via Evolution API: {mensagem_retorno}"}), 400
+
+# --- APIS DO CLIENTE PROTEGIDAS ---
+
+@app.route('/api/cliente/artes', methods=['GET', 'POST', 'DELETE'])
+def api_cliente_artes():
+    token = request.headers.get('X-Client-Token')
+    cli = get_current_client(token)
+    if not cli:
+        return jsonify({'error': 'Acesso negado.'}), 401
+
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    if request.method == 'GET':
+        cursor.execute('SELECT * FROM cliente_artes WHERE cliente_id = ? ORDER BY id DESC', (cli['id'],))
+        artes = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return jsonify(artes)
+
+    elif request.method == 'POST':
+        data = request.json
+        cursor.execute('''
+            INSERT INTO cliente_artes (cliente_id, nome_arquivo, url_arquivo, tamanho_bytes)
+            VALUES (?, ?, ?, ?)
+        ''', (cli['id'], data.get('nome_arquivo'), data.get('url_arquivo'), data.get('tamanho_bytes', 0)))
+        conn.commit()
+        arte_id = cursor.lastrowid
+        conn.close()
+        return jsonify({'message': 'Arte salva na biblioteca!', 'id': arte_id}), 201
+
+    elif request.method == 'DELETE':
+        arte_id = request.args.get('id')
+        cursor.execute('DELETE FROM cliente_artes WHERE id = ? AND cliente_id = ?', (arte_id, cli['id']))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'Arte removida!'})
+
+@app.route('/api/cliente/pedidos', methods=['GET'])
+def get_cliente_meus_pedidos():
+    token = request.headers.get('X-Client-Token')
+    cli = get_current_client(token)
+    if not cli:
+        return jsonify({'error': 'Acesso negado.'}), 401
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM pedidos WHERE cliente_id = ? OR cliente_email = ? ORDER BY id DESC', (cli['id'], cli['email']))
+    rows = cursor.fetchall()
+    pedidos = []
+    for r in rows:
+        ped = dict(r)
+        cursor.execute('SELECT * FROM itens_pedido WHERE pedido_id = ?', (ped['id'],))
+        ped['itens'] = [dict(i) for i in cursor.fetchall()]
+        pedidos.append(ped)
+    conn.close()
+    return jsonify(pedidos)
+
+# --- PRODUTOS E CONFIGURAÇÕES ---
+
+@app.route('/api/config', methods=['GET', 'PUT'])
+def api_config():
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    if request.method == 'GET':
+        cursor.execute('SELECT * FROM configuracoes LIMIT 1')
+        config = dict(cursor.fetchone())
+        conn.close()
+        return jsonify(config)
+    
+    elif request.method == 'PUT':
+        token = request.headers.get('X-Admin-Token')
+        if not get_current_admin(token):
+            return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
+
+        data = request.json
+        cursor.execute('''
+            UPDATE configuracoes SET
+                nome_grafica = ?, whatsapp = ?, chave_pix = ?, banner_titulo = ?,
+                banner_subtitulo = ?, aviso_topo = ?, desconto_pix = ?, taxa_entrega = ?,
+                evolution_api_url = ?, evolution_api_key = ?, evolution_instance = ?,
+                validar_whatsapp_ativo = ?
+            WHERE id = 1
+        ''', (
+            data.get('nome_grafica'), data.get('whatsapp'), data.get('chave_pix'),
+            data.get('banner_titulo'), data.get('banner_subtitulo'), data.get('aviso_topo'),
+            data.get('desconto_pix', 5.0), data.get('taxa_entrega', 15.0),
+            data.get('evolution_api_url'), data.get('evolution_api_key'), data.get('evolution_instance'),
+            1 if data.get('validar_whatsapp_ativo', True) else 0
+        ))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'Configurações e Evolution API salvas!'})
+
+@app.route('/api/produtos', methods=['GET', 'POST'])
+def api_produtos():
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    if request.method == 'GET':
+        incluir_inativos = request.args.get('admin', 'false') == 'true'
+        if incluir_inativos:
+            cursor.execute('SELECT * FROM produtos ORDER BY id DESC')
+        else:
+            cursor.execute('SELECT * FROM produtos WHERE ativo = 1 ORDER BY destaque DESC, id DESC')
+        
+        rows = cursor.fetchall()
+        produtos = []
+        for r in rows:
+            p = dict(r)
+            p['tamanhos'] = json.loads(p['tamanhos_json']) if p['tamanhos_json'] else []
+            p['papeis'] = json.loads(p['papeis_json']) if p['papeis_json'] else []
+            p['acabamentos'] = json.loads(p['acabamentos_json']) if p['acabamentos_json'] else []
+            p['tiragens'] = json.loads(p['tiragens_json']) if p['tiragens_json'] else []
+            produtos.append(p)
+        conn.close()
+        return jsonify(produtos)
+
+    elif request.method == 'POST':
+        token = request.headers.get('X-Admin-Token')
+        if not get_current_admin(token):
+            return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
+
+        data = request.json
+        cursor.execute('''
+            INSERT INTO produtos (nome, categoria, descricao, preco_base, imagem_url, tamanhos_json, papeis_json, acabamentos_json, tiragens_json, ativo, destaque)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            data.get('nome'), data.get('categoria'), data.get('descricao'),
+            float(data.get('preco_base', 0)), data.get('imagem_url'),
+            json.dumps(data.get('tamanhos', [])), json.dumps(data.get('papeis', [])),
+            json.dumps(data.get('acabamentos', [])), json.dumps(data.get('tiragens', [])),
+            1 if data.get('ativo', True) else 0, 1 if data.get('destaque', False) else 0
+        ))
+        conn.commit()
+        prod_id = cursor.lastrowid
+        conn.close()
+        return jsonify({'message': 'Produto criado!', 'id': prod_id}), 201
+
+@app.route('/api/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({'error': 'Nenhum arquivo enviado'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'Nome de arquivo inválido'}), 400
+    
+    filename = f"{uuid.uuid4().hex[:8]}_{secure_filename(file.filename)}"
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(filepath)
+    return jsonify({'url': f"/uploads/{filename}", 'filename': filename})
+
+# --- PEDIDOS & CHECKOUT ---
+
+@app.route('/api/pedidos', methods=['GET', 'POST'])
+def api_pedidos():
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    if request.method == 'GET':
+        token = request.headers.get('X-Admin-Token')
+        if not get_current_admin(token):
+            return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
+
+        search = request.args.get('search', '')
+        status = request.args.get('status', '')
+        
+        query = 'SELECT * FROM pedidos WHERE 1=1'
+        params = []
+        if search:
+            query += ' AND (codigo_pedido LIKE ? OR cliente_nome LIKE ? OR cliente_telefone LIKE ?)'
+            params.extend([f'%{search}%', f'%{search}%', f'%{search}%'])
+        if status and status != 'Todos':
+            query += ' AND status_producao = ?'
+            params.append(status)
+            
+        query += ' ORDER BY id DESC'
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        
+        pedidos = []
+        for r in rows:
+            ped = dict(r)
+            cursor.execute('SELECT * FROM itens_pedido WHERE pedido_id = ?', (ped['id'],))
+            ped['itens'] = [dict(item) for item in cursor.fetchall()]
+            pedidos.append(ped)
+            
+        conn.close()
+        return jsonify(pedidos)
+
+    elif request.method == 'POST':
+        data = request.json
+        cliente = data.get('cliente', {})
+        itens = data.get('itens', [])
+        cupom_codigo = data.get('cupom')
+        
+        if not cliente.get('nome') or not cliente.get('telefone'):
+            return jsonify({'error': 'Nome e WhatsApp do cliente são obrigatórios.'}), 400
+        if not itens:
+            return jsonify({'error': 'O carrinho está vazio.'}), 400
+            
+        cliente_id = None
+        if cliente.get('email'):
+            cursor.execute('SELECT id FROM clientes WHERE email = ?', (cliente.get('email').strip().lower(),))
+            c_row = cursor.fetchone()
+            if c_row:
+                cliente_id = c_row['id']
+                
+        codigo_pedido = f"#GF-{datetime.now().strftime('%m%d')}{uuid.uuid4().hex[:4].upper()}"
+        
+        total = float(data.get('total', 0))
+        desconto = float(data.get('desconto', 0))
+        taxa_entrega = float(data.get('taxa_entrega', 0))
+        metodo_pagamento = data.get('metodo_pagamento', 'PIX')
+        tipo_entrega = data.get('tipo_entrega', 'Balcao')
+        endereco_entrega = data.get('endereco_entrega', '')
+        observacoes = data.get('observacoes', '')
+        
+        status_pag = 'Aprovado' if metodo_pagamento == 'Cartao' else 'Aguardando Pagamento'
+        status_prod = 'Em Análise de Arte' if status_pag == 'Aprovado' else 'Aguardando Pagamento'
+
+        cursor.execute('''
+            INSERT INTO pedidos (
+                codigo_pedido, cliente_id, cliente_nome, cliente_telefone, cliente_email,
+                total, desconto, taxa_entrega, metodo_pagamento, status_pagamento, status_producao,
+                tipo_entrega, endereco_entrega, observacoes, cupom_aplicado
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            codigo_pedido, cliente_id, cliente.get('nome'), cliente.get('telefone'), cliente.get('email'),
+            total, desconto, taxa_entrega, metodo_pagamento, status_pag, status_prod,
+            tipo_entrega, endereco_entrega, observacoes, cupom_codigo
+        ))
+        
+        pedido_id = cursor.lastrowid
+        
+        for it in itens:
+            cursor.execute('''
+                INSERT INTO itens_pedido (
+                    pedido_id, produto_id, produto_nome, tamanho, papel, acabamento,
+                    quantidade, preco_unitario, preco_total, arte_url, criar_arte, detalhes_arte
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                pedido_id, it.get('produto_id'), it.get('produto_nome'), it.get('tamanho'),
+                it.get('papel'), it.get('acabamento'), int(it.get('quantidade', 1)),
+                float(it.get('preco_unitario', 0)), float(it.get('preco_total', 0)),
+                it.get('arte_url'), 1 if it.get('criar_arte') else 0, it.get('detalhes_arte', '')
+            ))
+
+        if status_pag == 'Aprovado':
+            cursor.execute('''
+                INSERT INTO caixa_movimentacoes (tipo, categoria, descricao, valor, forma_pagamento, pedido_id)
+                VALUES ('ENTRADA', 'Venda Pedido', ?, ?, ?, ?)
+            ''', (f"Venda Pedido {codigo_pedido}", total, metodo_pagamento, pedido_id))
+
+        if cupom_codigo:
+            cursor.execute('UPDATE cupons SET usos_atuais = usos_atuais + 1 WHERE codigo = ?', (cupom_codigo,))
+
+        conn.commit()
+        conn.close()
+
+        # Notificar novo pedido no WhatsApp do cliente via Evolution API
+        msg_cliente = f"🛍️ *Gráfica Rápida Express*\nOlá {cliente.get('nome')}! Seu pedido *{codigo_pedido}* foi recebido com sucesso!\nTotal: R$ {total:.2f}\nStatus: {status_prod}"
+        send_evolution_whatsapp(cliente.get('telefone'), msg_cliente)
+
+        return jsonify({
+            'message': 'Pedido realizado com sucesso!',
+            'pedido_id': pedido_id,
+            'codigo_pedido': codigo_pedido
+        }), 201
+
+@app.route('/api/pedidos/<codigo>', methods=['GET'])
+def get_pedido_by_codigo(codigo):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM pedidos WHERE codigo_pedido = ? OR id = ?', (codigo, codigo))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'error': 'Pedido não encontrado'}), 404
+        
+    ped = dict(row)
+    cursor.execute('SELECT * FROM itens_pedido WHERE pedido_id = ?', (ped['id'],))
+    ped['itens'] = [dict(i) for i in cursor.fetchall()]
+    conn.close()
+    return jsonify(ped)
+
+@app.route('/api/pedidos/<int:pedido_id>/status', methods=['PUT'])
+def update_pedido_status(pedido_id):
+    token = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token):
+        return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
+
+    data = request.json
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    status_producao = data.get('status_producao')
+    status_pagamento = data.get('status_pagamento')
+    
+    cursor.execute('SELECT * FROM pedidos WHERE id = ?', (pedido_id,))
+    ped = cursor.fetchone()
+    if not ped:
+        conn.close()
+        return jsonify({'error': 'Pedido não encontrado'}), 404
+        
+    ped_dict = dict(ped)
+    
+    if status_pagamento == 'Aprovado' and ped_dict['status_pagamento'] != 'Aprovado':
+        cursor.execute('''
+            INSERT INTO caixa_movimentacoes (tipo, categoria, descricao, valor, forma_pagamento, pedido_id)
+            VALUES ('ENTRADA', 'Venda Pedido', ?, ?, ?, ?)
+        ''', (f"Pagamento Confirmado {ped_dict['codigo_pedido']}", ped_dict['total'], ped_dict['metodo_pagamento'], pedido_id))
+
+    cursor.execute('''
+        UPDATE pedidos SET
+            status_producao = COALESCE(?, status_producao),
+            status_pagamento = COALESCE(?, status_pagamento),
+            data_atualizacao = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ''', (status_producao, status_pagamento, pedido_id))
+    
+    conn.commit()
+    conn.close()
+
+    # Notificar alteração de status no WhatsApp
+    if status_producao:
+        msg_update = f"📦 *Gráfica Rápida Express*\nSeu pedido *{ped_dict['codigo_pedido']}* teve o status atualizado para: *{status_producao}*!"
+        send_evolution_whatsapp(ped_dict['cliente_telefone'], msg_update)
+
+    return jsonify({'message': 'Status do pedido atualizado!'})
+
+# --- ESTOQUE, ORÇAMENTOS E CUPONS ---
+
+@app.route('/api/estoque', methods=['GET', 'POST', 'PUT', 'DELETE'])
+def api_estoque():
+    token = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token):
+        return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
+
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    if request.method == 'GET':
+        cursor.execute('SELECT * FROM estoque_insumos ORDER BY quantidade_atual ASC')
+        insumos = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return jsonify(insumos)
+
+    elif request.method == 'POST':
+        data = request.json
+        cursor.execute('''
+            INSERT INTO estoque_insumos (nome_insumo, categoria, quantidade_atual, quantidade_minima, unidade_medida, custo_unitario)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (data.get('nome_insumo'), data.get('categoria'), float(data.get('quantidade_atual', 0)), float(data.get('quantidade_minima', 0)), data.get('unidade_medida', 'Unidades'), float(data.get('custo_unitario', 0))))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'Insumo cadastrado!'}), 201
+
+    elif request.method == 'PUT':
+        data = request.json
+        cursor.execute('''
+            UPDATE estoque_insumos SET quantidade_atual = ?, quantidade_minima = ? WHERE id = ?
+        ''', (float(data.get('quantidade_atual')), float(data.get('quantidade_minima')), data.get('id')))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'Estoque atualizado!'})
+
+@app.route('/api/orcamentos', methods=['GET', 'POST', 'PUT'])
+def api_orcamentos():
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    if request.method == 'GET':
+        token = request.headers.get('X-Admin-Token')
+        if not get_current_admin(token):
+            return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
+        cursor.execute('SELECT * FROM orcamentos ORDER BY id DESC')
+        orc = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return jsonify(orc)
+
+    elif request.method == 'POST':
+        data = request.json
+        codigo = f"#ORC-{datetime.now().strftime('%m%d')}{uuid.uuid4().hex[:4].upper()}"
+        cursor.execute('''
+            INSERT INTO orcamentos (codigo_orcamento, cliente_nome, cliente_telefone, descricao, valor_estimado, status)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (codigo, data.get('cliente_nome'), data.get('cliente_telefone'), data.get('descricao'), float(data.get('valor_estimado', 0)), 'Pendente'))
+        conn.commit()
+        orc_id = cursor.lastrowid
+        conn.close()
+        return jsonify({'message': 'Orçamento criado!', 'id': orc_id, 'codigo': codigo}), 201
+
+@app.route('/api/cupons', methods=['GET', 'POST', 'DELETE'])
+def api_cupons():
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    if request.method == 'GET':
+        cursor.execute('SELECT * FROM cupons ORDER BY id DESC')
+        cupons = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return jsonify(cupons)
+
+    elif request.method == 'POST':
+        token = request.headers.get('X-Admin-Token')
+        if not get_current_admin(token):
+            return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
+
+        data = request.json
+        cursor.execute('''
+            INSERT INTO cupons (codigo, porcentagem_desconto, valor_minimo, limite_usos)
+            VALUES (?, ?, ?, ?)
+        ''', (data.get('codigo').upper().strip(), float(data.get('porcentagem_desconto', 10)), float(data.get('valor_minimo', 0)), int(data.get('limite_usos', 100))))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'Cupom criado!'}), 201
+
+    elif request.method == 'DELETE':
+        token = request.headers.get('X-Admin-Token')
+        if not get_current_admin(token):
+            return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
+        cupom_id = request.args.get('id')
+        cursor.execute('DELETE FROM cupons WHERE id = ?', (cupom_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'Cupom removido!'})
+
+@app.route('/api/cupons/validar', methods=['POST'])
+def validar_cupom():
+    data = request.json
+    codigo = data.get('codigo', '').upper().strip()
+    subtotal = float(data.get('subtotal', 0))
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM cupons WHERE codigo = ? AND ativo = 1', (codigo,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({'valid': False, 'message': 'Cupom inválido ou expirado.'}), 404
+        
+    cupom = dict(row)
+    if subtotal < cupom['valor_minimo']:
+        return jsonify({'valid': False, 'message': f"Valor mínimo do cupom é R$ {cupom['valor_minimo']:.2f}"}), 400
+
+    if cupom['usos_atuais'] >= cupom['limite_usos']:
+        return jsonify({'valid': False, 'message': 'Limite de uso deste cupom esgotado.'}), 400
+
+    desconto_valor = subtotal * (cupom['porcentagem_desconto'] / 100.0)
+    return jsonify({
+        'valid': True,
+        'codigo': cupom['codigo'],
+        'porcentagem': cupom['porcentagem_desconto'],
+        'desconto_valor': desconto_valor,
+        'message': f"Cupom de {cupom['porcentagem_desconto']}% aplicado!"
+    })
+
+# --- CAIXA & DASHBOARD ---
+
+@app.route('/api/caixa/resumo', methods=['GET'])
+def get_caixa_resumo():
+    token = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token):
+        return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
+
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT COALESCE(SUM(valor), 0) FROM caixa_movimentacoes WHERE tipo = 'ENTRADA'")
+    total_entradas = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COALESCE(SUM(valor), 0) FROM caixa_movimentacoes WHERE tipo = 'SAIDA'")
+    total_saidas = cursor.fetchone()[0]
+    
+    saldo_atual = total_entradas - total_saidas
+    
+    cursor.execute('SELECT * FROM caixa_movimentacoes ORDER BY id DESC LIMIT 50')
+    movimentacoes = [dict(r) for r in cursor.fetchall()]
+    
+    conn.close()
+    return jsonify({
+        'total_entradas': total_entradas,
+        'total_saidas': total_saidas,
+        'saldo_atual': saldo_atual,
+        'movimentacoes': movimentacoes
+    })
+
+@app.route('/api/caixa/movimento', methods=['POST'])
+def add_caixa_movimento():
+    token = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token):
+        return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
+
+    data = request.json
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    valor = float(data.get('valor', 0))
+    if valor <= 0:
+        return jsonify({'error': 'Valor deve ser maior que zero'}), 400
+        
+    cursor.execute('''
+        INSERT INTO caixa_movimentacoes (tipo, categoria, descricao, valor, forma_pagamento)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (data.get('tipo'), data.get('categoria', 'Geral'), data.get('descricao', ''), valor, data.get('forma_pagamento', 'Dinheiro')))
+    
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Movimentação registrada!'})
+
+@app.route('/api/clientes', methods=['GET'])
+def get_clientes():
+    token = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token):
+        return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT c.*, 
+               COUNT(p.id) as total_pedidos, 
+               COALESCE(SUM(p.total), 0) as total_gasto
+        FROM clientes c
+        LEFT JOIN pedidos p ON c.id = p.cliente_id
+        GROUP BY c.id
+        ORDER BY total_gasto DESC
+    ''')
+    clientes = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return jsonify(clientes)
+
+@app.route('/api/dashboard', methods=['GET'])
+def get_dashboard_metrics():
+    token = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token):
+        return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
+
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT COUNT(*) FROM pedidos")
+    total_pedidos = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM pedidos WHERE status_producao IN ('Aguardando Pagamento', 'Em Análise de Arte', 'Em Impressão', 'Acabamento & Corte')")
+    pedidos_em_producao = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COALESCE(SUM(total), 0) FROM pedidos WHERE status_pagamento = 'Aprovado'")
+    faturamento_total = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM clientes")
+    total_clientes = cursor.fetchone()[0]
+    
+    cursor.execute('''
+        SELECT DATE(data_criacao) as dia, SUM(total) as total
+        FROM pedidos
+        WHERE status_pagamento = 'Aprovado'
+        GROUP BY DATE(data_criacao)
+        ORDER BY dia DESC LIMIT 7
+    ''')
+    vendas_dia = [dict(r) for r in cursor.fetchall()]
+
+    conn.close()
+    return jsonify({
+        'total_pedidos': total_pedidos,
+        'pedidos_em_producao': pedidos_em_producao,
+        'faturamento_total': faturamento_total,
+        'total_clientes': total_clientes,
+        'vendas_dia': vendas_dia
+    })
+
+if __name__ == '__main__':
+    print("=" * 60)
+    print(" GRAFICA RAPIDA EXPRESS - SERVIDOR INICIALIZADO ")
+    print(" Acesse a aplicacao em: http://127.0.0.1:8050")
+    print("=" * 60)
+    app.run(host='0.0.0.0', port=8050, debug=False)
