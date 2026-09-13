@@ -17,7 +17,8 @@ app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__fil
 app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024  # 32MB max upload
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'grafica.db')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.environ.get('DB_PATH', os.path.join(BASE_DIR, 'grafica.db'))
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
