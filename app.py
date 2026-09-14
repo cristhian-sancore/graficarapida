@@ -123,6 +123,13 @@ def get_db():
         conn.row_factory = sqlite3.Row
         return DBWrapper(conn, is_postgres=False)
 
+def safe_add_column(cursor, conn, table, column_def):
+    try:
+        cursor.execute(f'ALTER TABLE {table} ADD COLUMN {column_def}')
+        conn.commit()
+    except Exception:
+        conn.rollback()
+
 def init_db():
     conn = get_db()
     cursor = conn.cursor()
@@ -145,16 +152,13 @@ def init_db():
             validar_whatsapp_ativo INTEGER DEFAULT 1
         )
     ''')
+    conn.commit()
     
     # Migrações das configurações da Evolution API
-    try: cursor.execute('ALTER TABLE configuracoes ADD COLUMN evolution_api_url TEXT')
-    except Exception: pass
-    try: cursor.execute('ALTER TABLE configuracoes ADD COLUMN evolution_api_key TEXT')
-    except Exception: pass
-    try: cursor.execute('ALTER TABLE configuracoes ADD COLUMN evolution_instance TEXT')
-    except Exception: pass
-    try: cursor.execute('ALTER TABLE configuracoes ADD COLUMN validar_whatsapp_ativo INTEGER DEFAULT 1')
-    except Exception: pass
+    safe_add_column(cursor, conn, 'configuracoes', 'evolution_api_url TEXT')
+    safe_add_column(cursor, conn, 'configuracoes', 'evolution_api_key TEXT')
+    safe_add_column(cursor, conn, 'configuracoes', 'evolution_instance TEXT')
+    safe_add_column(cursor, conn, 'configuracoes', 'validar_whatsapp_ativo INTEGER DEFAULT 1')
 
     # Produtos
     cursor.execute('''
@@ -173,6 +177,7 @@ def init_db():
             destaque INTEGER DEFAULT 0
         )
     ''')
+    conn.commit()
 
     # Clientes com Autenticação e Código WhatsApp
     cursor.execute('''
@@ -190,15 +195,12 @@ def init_db():
             data_cadastro DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    conn.commit()
 
-    try: cursor.execute('ALTER TABLE clientes ADD COLUMN senha_hash TEXT')
-    except Exception: pass
-    try: cursor.execute('ALTER TABLE clientes ADD COLUMN token_sessao TEXT')
-    except Exception: pass
-    try: cursor.execute('ALTER TABLE clientes ADD COLUMN codigo_validacao TEXT')
-    except Exception: pass
-    try: cursor.execute('ALTER TABLE clientes ADD COLUMN status_validacao TEXT DEFAULT "Pendente"')
-    except Exception: pass
+    safe_add_column(cursor, conn, 'clientes', 'senha_hash TEXT')
+    safe_add_column(cursor, conn, 'clientes', 'token_sessao TEXT')
+    safe_add_column(cursor, conn, 'clientes', 'codigo_validacao TEXT')
+    safe_add_column(cursor, conn, 'clientes', 'status_validacao TEXT DEFAULT \'Pendente\'')
 
     # Usuários Administradores
     cursor.execute('''
@@ -326,8 +328,10 @@ def init_db():
     ''')
 
     # Configurações Iniciais
-    cursor.execute('SELECT COUNT(*) FROM configuracoes')
-    if cursor.fetchone()[0] == 0:
+    cursor.execute('SELECT COUNT(*) AS total FROM configuracoes')
+    r_cfg = cursor.fetchone()
+    total_cfg = r_cfg['total'] if isinstance(r_cfg, dict) or hasattr(r_cfg, 'keys') else r_cfg[0]
+    if total_cfg == 0:
         cursor.execute('''
             INSERT INTO configuracoes (nome_grafica, whatsapp, chave_pix, banner_titulo, banner_subtitulo, aviso_topo, evolution_api_url, evolution_api_key, evolution_instance, validar_whatsapp_ativo)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -343,18 +347,24 @@ def init_db():
             'grafica-express',
             1
         ))
+        conn.commit()
 
     # Admin Padrão (admin / admin123)
-    cursor.execute('SELECT COUNT(*) FROM usuarios_admin')
-    if cursor.fetchone()[0] == 0:
+    cursor.execute('SELECT COUNT(*) AS total FROM usuarios_admin')
+    r_adm = cursor.fetchone()
+    total_adm = r_adm['total'] if isinstance(r_adm, dict) or hasattr(r_adm, 'keys') else r_adm[0]
+    if total_adm == 0:
         cursor.execute('''
             INSERT INTO usuarios_admin (usuario, senha_hash, nome)
             VALUES (?, ?, ?)
         ''', ('admin', generate_password_hash('admin123'), 'Administrador Geral'))
+        conn.commit()
 
     # Produtos Iniciais
-    cursor.execute('SELECT COUNT(*) FROM produtos')
-    if cursor.fetchone()[0] == 0:
+    cursor.execute('SELECT COUNT(*) AS total FROM produtos')
+    r_prod = cursor.fetchone()
+    total_prod = r_prod['total'] if isinstance(r_prod, dict) or hasattr(r_prod, 'keys') else r_prod[0]
+    if total_prod == 0:
         produtos_padrao = [
             (
                 'Cartão de Visita Premium',
@@ -461,8 +471,10 @@ def init_db():
         ''', produtos_padrao)
 
     # Insumos Iniciais
-    cursor.execute('SELECT COUNT(*) FROM estoque_insumos')
-    if cursor.fetchone()[0] == 0:
+    cursor.execute('SELECT COUNT(*) AS total FROM estoque_insumos')
+    r_ins = cursor.fetchone()
+    total_ins = r_ins['total'] if isinstance(r_ins, dict) or hasattr(r_ins, 'keys') else r_ins[0]
+    if total_ins == 0:
         insumos_padrao = [
             ('Papel Couche 300g (Folhas A3+)', 'Papéis', 450, 100, 'Folhas', 0.80),
             ('Papel Couche 115g (Folhas A3+)', 'Papéis', 1200, 250, 'Folhas', 0.35),
@@ -472,22 +484,31 @@ def init_db():
             ('Toner Ciano / Magenta / Amarelo', 'Suprimentos', 6, 2, 'Kits', 480.00),
             ('Bastões de Madeira para Banners', 'Acabamentos', 140, 30, 'Metros', 2.20)
         ]
-        cursor.executemany('''
-            INSERT INTO estoque_insumos (nome_insumo, categoria, quantidade_atual, quantidade_minima, unidade_medida, custo_unitario)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', insumos_padrao)
+        for ins in insumos_padrao:
+            cursor.execute('''
+                INSERT INTO estoque_insumos (nome_insumo, categoria, quantidade_atual, quantidade_minima, unidade_medida, custo_unitario)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', ins)
+        conn.commit()
 
     # Cupons Iniciais
-    cursor.execute('SELECT COUNT(*) FROM cupons')
-    if cursor.fetchone()[0] == 0:
+    cursor.execute('SELECT COUNT(*) AS total FROM cupons')
+    r_cup = cursor.fetchone()
+    total_cup = r_cup['total'] if isinstance(r_cup, dict) or hasattr(r_cup, 'keys') else r_cup[0]
+    if total_cup == 0:
         cupons_padrao = [
             ('PRIMEIRACOMPRA10', 10.0, 50.0, 500, 0, 1),
             ('VIP15', 15.0, 100.0, 100, 0, 1)
         ]
-        cursor.executemany('''
-            INSERT INTO cupons (codigo, porcentagem_desconto, valor_minimo, limite_usos, usos_atuais, ativo)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', cupons_padrao)
+        for cup in cupons_padrao:
+            cursor.execute('''
+                INSERT INTO cupons (codigo, porcentagem_desconto, valor_minimo, limite_usos, usos_atuais, ativo)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', cup)
+        conn.commit()
+
+    conn.commit()
+    conn.close()
 
     conn.commit()
     conn.close()
