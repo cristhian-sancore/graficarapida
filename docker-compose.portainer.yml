@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # BANCO DE DADOS POSTGRESQL (Alta Performance & Produção)
+  # BANCO DE DADOS POSTGRESQL (Conectado à rede isolada 'grafica')
   postgres-db:
     image: postgres:15-alpine
     container_name: grafica_postgres
@@ -12,6 +12,8 @@ services:
       POSTGRES_PASSWORD: graficapassword2026
     ports:
       - "5432:5432"
+    networks:
+      - grafica
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -20,7 +22,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # APLICAÇÃO WEB DA GRÁFICA RÁPIDA
+  # APLICAÇÃO WEB DA GRÁFICA RÁPIDA (Conectada às redes 'grafica' e 'REDE' do Cloudflare)
   grafica-express:
     image: ghcr.io/cristhian-sancore/graficarapida:latest
     container_name: grafica_rapida_portainer
@@ -34,8 +36,19 @@ services:
     depends_on:
       postgres-db:
         condition: service_healthy
+    networks:
+      - grafica
+      - REDE
     volumes:
       - grafica_uploads_data:/app/static/uploads
+
+networks:
+  grafica:
+    name: grafica
+    driver: bridge
+  REDE:
+    name: REDE
+    external: true
 
 volumes:
   postgres_data:
