@@ -36,7 +36,7 @@ services:
         condition: service_healthy
     networks:
       grafica:
-      REDE:
+      rede:
         aliases:
           - grafica
           - grafica-express
@@ -53,7 +53,8 @@ networks:
   grafica:
     name: grafica
     driver: bridge
-  REDE:
+  rede:
+    name: rede
     external: true
 
 volumes:
