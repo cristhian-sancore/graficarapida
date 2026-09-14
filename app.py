@@ -527,14 +527,17 @@ def auth_cliente_cadastrar():
         msg = f"🔒 *Gráfica Rápida Express*\nOlá {nome}! Seu código de validação de cadastro é: *{codigo_otp}*\n\nDigite este código no site para ativar sua conta!"
         sucesso, msg_status = send_evolution_whatsapp(telefone, msg)
         
-        return jsonify({
+        res_data = {
             'requer_validacao': True,
             'cliente_id': cliente_id,
             'email': email,
             'telefone': telefone,
-            'codigo_dev': codigo_otp, # Disponibilizado para facilitar testes em dev se API não configurada
             'message': f"Código de validação enviado para o seu WhatsApp ({telefone})!"
-        }), 201
+        }
+        if not sucesso:
+            res_data['codigo_dev'] = codigo_otp
+            
+        return jsonify(res_data), 201
     else:
         return jsonify({
             'requer_validacao': False,
@@ -609,12 +612,15 @@ def auth_cliente_reenviar_codigo():
     conn.close()
 
     msg = f"🔒 *Gráfica Rápida Express*\nSeu novo código de validação de cadastro é: *{novo_codigo}*"
-    send_evolution_whatsapp(row['telefone'], msg)
+    sucesso, msg_status = send_evolution_whatsapp(row['telefone'], msg)
 
-    return jsonify({
-        'message': 'Novo código de validação enviado com sucesso!',
-        'codigo_dev': novo_codigo
-    })
+    res_data = {
+        'message': 'Novo código de validação enviado com sucesso!'
+    }
+    if not sucesso:
+        res_data['codigo_dev'] = novo_codigo
+
+    return jsonify(res_data)
 
 
 
