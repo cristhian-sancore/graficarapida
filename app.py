@@ -81,6 +81,18 @@ class CursorWrapper:
                 return self.cursor.execute(query)
             return self.cursor.execute(query, params)
 
+    def executemany(self, query, seq_of_params):
+        if self.is_postgres:
+            query_pg = query.replace('?', '%s')
+            query_pg = query_pg.replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
+            query_pg = query_pg.replace('DATETIME', 'TIMESTAMP')
+            return self.cursor.executemany(query_pg, seq_of_params)
+        else:
+            return self.cursor.executemany(query, seq_of_params)
+
+    def __getattr__(self, name):
+        return getattr(self.cursor, name)
+
     def fetchone(self):
         row = self.cursor.fetchone()
         if not row:
