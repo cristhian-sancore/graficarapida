@@ -18,7 +18,14 @@ app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024  # 32MB max upload
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.environ.get('DB_PATH', os.path.join(BASE_DIR, 'grafica.db'))
+# Se o diretório /app/data existir (Portainer volume), salva o banco em /app/data/grafica.db
+default_db_dir = '/app/data' if os.path.exists('/app/data') else BASE_DIR
+default_db_path = os.path.join(default_db_dir, 'grafica.db')
+
+DB_PATH = os.environ.get('DB_PATH', default_db_path)
+db_dir = os.path.dirname(DB_PATH)
+if db_dir:
+    os.makedirs(db_dir, exist_ok=True)
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -418,40 +425,49 @@ def send_evolution_whatsapp(numero, mensagem, custom_url=None, custom_key=None, 
         print(f"[Evolution API Alert] Configurações incompletas da Evolution API.")
         return False, "Configurações da Evolution API incompletas (URL, API Key e Instância são obrigatórios)."
 
-    # Sanitizar número (Apenas números ex: 5511999998888)
+    # Sanitizar número (Apenas números ex: 5511999998888 ou 556596772226)
     num_limpo = ''.join(c for c in str(numero) if c.isdigit())
     if not num_limpo.startswith('55') and len(num_limpo) <= 11:
         num_limpo = '55' + num_limpo
 
+    numeros_para_tentar = [num_limpo]
+    if len(num_limpo) == 13 and num_limpo.startswith('55'):
+        num_sem_9 = num_limpo[:4] + num_limpo[5:]
+        if num_sem_9 not in numeros_para_tentar:
+            numeros_para_tentar.append(num_sem_9)
+
     endpoint = f"{api_url}/message/sendText/{instance}"
-    payload = json.dumps({"number": num_limpo, "text": mensagem}).encode('utf-8')
-    
     headers = {
         'Content-Type': 'application/json',
         'apikey': api_key,
         'User-Agent': 'Mozilla/5.0'
     }
 
-    try:
-        req = urllib.request.Request(endpoint, data=payload, headers=headers, method='POST')
-        with urllib.request.urlopen(req, timeout=12) as response:
-            res_body = response.read().decode('utf-8')
-            print(f"[Evolution API Success] WhatsApp enviado para {num_limpo}: {res_body}")
-            return True, res_body
-    except urllib.error.HTTPError as e:
-        err_content = e.read().decode('utf-8', errors='ignore')
-        print(f"[Evolution API HTTPError] Status {e.code} para {num_limpo}: {err_content}")
+    ultimo_erro = "Falha ao enviar mensagem."
+    for target_num in numeros_para_tentar:
+        payload = json.dumps({"number": target_num, "text": mensagem}).encode('utf-8')
         try:
-            err_json = json.loads(err_content)
-            msg_detalhe = err_json.get('response', {}).get('message') or err_json.get('message') or err_content
-            if isinstance(msg_detalhe, list):
-                msg_detalhe = ", ".join(msg_detalhe)
-            return False, f"HTTP {e.code}: {msg_detalhe}"
-        except Exception:
-            return False, f"HTTP {e.code}: {err_content or e.reason}"
-    except Exception as e:
-        print(f"[Evolution API Error] Erro ao enviar mensagem WhatsApp para {num_limpo}: {e}")
-        return False, str(e)
+            req = urllib.request.Request(endpoint, data=payload, headers=headers, method='POST')
+            with urllib.request.urlopen(req, timeout=12) as response:
+                res_body = response.read().decode('utf-8')
+                print(f"[Evolution API Success] WhatsApp enviado para {target_num}: {res_body}")
+                return True, res_body
+        except urllib.error.HTTPError as e:
+            err_content = e.read().decode('utf-8', errors='ignore')
+            print(f"[Evolution API HTTPError] Status {e.code} para {target_num}: {err_content}")
+            try:
+                err_json = json.loads(err_content)
+                msg_detalhe = err_json.get('response', {}).get('message') or err_json.get('message') or err_content
+                if isinstance(msg_detalhe, list):
+                    msg_detalhe = ", ".join(msg_detalhe)
+                ultimo_erro = f"HTTP {e.code}: {msg_detalhe}"
+            except Exception:
+                ultimo_erro = f"HTTP {e.code}: {err_content or e.reason}"
+        except Exception as e:
+            print(f"[Evolution API Error] Erro ao enviar para {target_num}: {e}")
+            ultimo_erro = str(e)
+
+    return False, ultimo_erro
 
 # --- HELPER DE AUTENTICAÇÃO ---
 

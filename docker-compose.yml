@@ -10,8 +10,15 @@ services:
     ports:
       - "8050:8050"
     volumes:
-      - ./grafica.db:/app/grafica.db
-      - ./static/uploads:/app/static/uploads
+      - grafica_db_data:/app/data
+      - grafica_uploads_data:/app/static/uploads
     environment:
       - PORT=8050
       - FLASK_ENV=production
+      - DB_PATH=/app/data/grafica.db
+
+volumes:
+  grafica_db_data:
+    driver: local
+  grafica_uploads_data:
+    driver: local
