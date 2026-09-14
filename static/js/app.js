@@ -599,8 +599,22 @@ function renderCatalog() {
     return;
   }
 
+function parseIfString(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val);
+      return Array.isArray(parsed) ? parsed : [val];
+    } catch (e) {
+      return [val];
+    }
+  }
+  return [];
+}
+
   container.innerHTML = prods.map(p => `
-    <div class="product-card">
+    <div class="product-card" onclick="openProdutoModal(${p.id})" style="cursor: pointer;">
       <div class="card-image-wrap">
         <img src="${p.imagem_url}" alt="${p.nome}" class="product-img">
         ${p.destaque ? '<span class="card-badge"><i class="fa-solid fa-fire"></i> Mais Vendido</span>' : ''}
@@ -611,9 +625,9 @@ function renderCatalog() {
         <div class="price-row">
           <div>
             <div class="price-label">A partir de</div>
-            <div class="price-val">R$ ${p.preco_base.toFixed(2).replace('.', ',')}</div>
+            <div class="price-val">R$ ${(p.preco_base || 0).toFixed(2).replace('.', ',')}</div>
           </div>
-          <button class="btn btn-primary btn-sm" onclick="openProdutoModal(${p.id})">
+          <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openProdutoModal(${p.id})">
             <i class="fa-solid fa-calculator"></i> Personalizar
           </button>
         </div>
@@ -623,61 +637,64 @@ function renderCatalog() {
 }
 
 function openProdutoModal(prodId) {
-  const prod = state.produtos.find(p => p.id === prodId);
+  if (!state.produtos || state.produtos.length === 0) return;
+  const prod = state.produtos.find(p => String(p.id) === String(prodId));
   if (!prod) return;
+
+  prod.tamanhos = parseIfString(prod.tamanhos);
+  prod.papeis = parseIfString(prod.papeis);
+  prod.acabamentos = parseIfString(prod.acabamentos);
+  prod.tiragens = parseIfString(prod.tiragens);
 
   state.produtoSelecionado = prod;
   state.opcoesSelecionadas = {
     tamanho: prod.tamanhos[0] || 'Padrão',
     papel: prod.papeis[0] || 'Standard',
     acabamento: prod.acabamentos[0] || 'Sem acabamento',
-    tiragem: prod.tiragens[0] || { qtd: 1, preco: prod.preco_base },
+    tiragem: prod.tiragens[0] || { qtd: 1, preco: prod.preco_base || 0 },
     arteUrl: '',
     criarArte: false,
     detalhesArte: '',
     precoTotal: 0
   };
 
-  document.getElementById('modal-prod-id').value = prod.id;
-  document.getElementById('modal-prod-title').innerText = prod.nome;
-  document.getElementById('modal-prod-desc').innerText = prod.descricao;
+  const elId = document.getElementById('modal-prod-id');
+  if (elId) elId.value = prod.id;
+  const elTitle = document.getElementById('modal-prod-title');
+  if (elTitle) elTitle.innerText = prod.nome || 'Personalizar Produto';
+  const elDesc = document.getElementById('modal-prod-desc');
+  if (elDesc) elDesc.innerText = prod.descricao || '';
 
-  renderChips('opt-tamanhos', prod.tamanhos, state.opcoesSelecionadas.tamanho, (val) => {
-    state.opcoesSelecionadas.tamanho = val;
-    calcularTotalModal();
-  });
-
-  renderChips('opt-papeis', prod.papeis, state.opcoesSelecionadas.papel, (val) => {
-    state.opcoesSelecionadas.papel = val;
-    calcularTotalModal();
-  });
-
-  renderChips('opt-acabamentos', prod.acabamentos, state.opcoesSelecionadas.acabamento, (val) => {
-    state.opcoesSelecionadas.acabamento = val;
-    calcularTotalModal();
-  });
+  renderChips('opt-tamanhos', prod.tamanhos, state.opcoesSelecionadas.tamanho);
+  renderChips('opt-papeis', prod.papeis, state.opcoesSelecionadas.papel);
+  renderChips('opt-acabamentos', prod.acabamentos, state.opcoesSelecionadas.acabamento);
 
   const containerTir = document.getElementById('opt-tiragens');
-  containerTir.innerHTML = prod.tiragens.map((t, idx) => `
-    <div class="chip-option ${idx === 0 ? 'selected' : ''}" onclick="selectTiragem(${idx}, this)">
-      <div style="font-weight: 800; font-size: 1.05rem;">${t.qtd} un</div>
-      <div style="font-size: 0.8rem; color: var(--primary);">R$ ${t.preco.toFixed(2).replace('.', ',')}</div>
-    </div>
-  `).join('');
+  if (containerTir && prod.tiragens) {
+    containerTir.innerHTML = prod.tiragens.map((t, idx) => `
+      <div class="chip-option ${idx === 0 ? 'selected' : ''}" onclick="selectTiragem(${idx}, this)">
+        <div style="font-weight: 800; font-size: 1.05rem;">${t.qtd || 1} un</div>
+        <div style="font-size: 0.8rem; color: var(--primary);">R$ ${(t.preco || 0).toFixed(2).replace('.', ',')}</div>
+      </div>
+    `).join('');
+  }
 
-  document.getElementById('filename-uploaded').innerText = 'Nenhum arquivo selecionado (PDF/PNG/JPG)';
+  const elFile = document.getElementById('filename-uploaded');
+  if (elFile) elFile.innerText = 'Nenhum arquivo selecionado (PDF/PNG/JPG)';
   calcularTotalModal();
   openModal('modal-produto');
 }
 
-function renderChips(containerId, list, initialVal, onSelect) {
+function renderChips(containerId, list, initialVal) {
   const c = document.getElementById(containerId);
   if (!c) return;
-  c.innerHTML = list.map(item => `
+  const items = Array.isArray(list) ? list : [];
+  c.innerHTML = items.map(item => `
     <div class="chip-option ${item === initialVal ? 'selected' : ''}" onclick="selectChip(this, '${containerId}')">
       ${item}
     </div>
   `).join('');
+
 
   c.dataset.onSelect = onSelect;
 }
