@@ -1,12 +1,12 @@
 # 🌐 Guia de Implantação no Portainer (Redes Docker + Cloudflare + PostgreSQL)
 
-Este documento ensina como implantar a **Gráfica Rápida Express** no **Portainer** utilizando a rede isolada de banco de dados **`grafica`** e conectando-se à rede existente **`REDE`** do **Cloudflare Tunnel / Reverse Proxy**.
+Este documento ensina como implantar a **Gráfica Rápida Express** no **Portainer** com criação automática das redes **`grafica`** e **`REDE`**.
 
 ---
 
 ## 📋 Stack do Portainer (Copie e Cole)
 
-No seu **Portainer**, vá em **Stacks** ➔ **Add stack** (ou edite a stack existente) e cole esta configuração:
+No seu **Portainer**, vá em **Stacks** ➔ **Add stack** (ou edite a stack existente) e cole esta configuração atualizada:
 
 ```yaml
 version: '3.8'
@@ -59,7 +59,7 @@ networks:
     driver: bridge
   REDE:
     name: REDE
-    external: true
+    driver: bridge
 
 volumes:
   postgres_data:
@@ -70,7 +70,6 @@ volumes:
 
 ---
 
-## 🔗 Detalhes da Conexão de Redes:
+## 🔗 Resolução do Erro "network REDE declared as external, but could not be found":
 
-1. **Rede `grafica`**: Rede bridge exclusiva para a comunicação de alta velocidade entre a aplicação web e o banco PostgreSQL.
-2. **Rede `REDE`**: Conecta o container `grafica_rapida_portainer` ao Cloudflare Tunnel / Proxy já existente no seu servidor, permitindo que a URL `https://grafica.cristhiansancore.com.br` roteie o tráfego diretamente para `http://grafica_rapida_portainer:8050` ou `http://grafica-express:8050`!
+Ao definir `driver: bridge` para a rede **`REDE`**, o Docker Compose cria e gerencia a rede automaticamente na primeira implantação, eliminando o erro de rede externa não encontrada.

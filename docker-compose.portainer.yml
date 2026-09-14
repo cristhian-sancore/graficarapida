@@ -48,7 +48,7 @@ networks:
     driver: bridge
   REDE:
     name: REDE
-    external: true
+    driver: bridge
 
 volumes:
   postgres_data:
