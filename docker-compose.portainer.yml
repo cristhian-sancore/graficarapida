@@ -35,8 +35,17 @@ services:
       postgres-db:
         condition: service_healthy
     networks:
-      - grafica
-      - REDE
+      grafica:
+      REDE:
+        aliases:
+          - grafica
+          - grafica-express
+          - grafica_express
+          - grafica-rapida
+          - grafica_rapida
+          - grafica_rapida_express
+          - grafica_rapida_portainer
+          - grafica_rapida_app
     volumes:
       - grafica_uploads_data:/app/static/uploads
 
@@ -45,8 +54,7 @@ networks:
     name: grafica
     driver: bridge
   REDE:
-    name: REDE
-    driver: bridge
+    external: true
 
 volumes:
   postgres_data:
