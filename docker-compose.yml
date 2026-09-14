@@ -1,6 +1,26 @@
 version: '3.8'
 
 services:
+  # BANCO DE DADOS POSTGRESQL (Produção & Alta Performance)
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: grafica_postgres_local
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: graficadb
+      POSTGRES_USER: graficauser
+      POSTGRES_PASSWORD: graficapassword2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U graficauser -d graficadb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # APLICAÇÃO WEB DA GRÁFICA RÁPIDA
   grafica-web:
     build:
       context: .
@@ -9,16 +29,18 @@ services:
     restart: unless-stopped
     ports:
       - "8050:8050"
-    volumes:
-      - grafica_db_data:/app/data
-      - grafica_uploads_data:/app/static/uploads
     environment:
       - PORT=8050
       - FLASK_ENV=production
-      - DB_PATH=/app/data/grafica.db
+      - DATABASE_URL=postgresql://graficauser:graficapassword2026@postgres-db:5432/graficadb
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    volumes:
+      - grafica_uploads_data:/app/static/uploads
 
 volumes:
-  grafica_db_data:
+  postgres_data:
     driver: local
   grafica_uploads_data:
     driver: local

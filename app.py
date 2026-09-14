@@ -27,10 +27,101 @@ db_dir = os.path.dirname(DB_PATH)
 if db_dir:
     os.makedirs(db_dir, exist_ok=True)
 
+DATABASE_URL = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRES_URL')
+
+class DBWrapper:
+    def __init__(self, conn, is_postgres=False):
+        self.conn = conn
+        self.is_postgres = is_postgres
+
+    def cursor(self):
+        return CursorWrapper(self.conn.cursor(), self.conn, self.is_postgres)
+
+    def commit(self):
+        return self.conn.commit()
+
+    def rollback(self):
+        return self.conn.rollback()
+
+    def close(self):
+        return self.conn.close()
+
+class CursorWrapper:
+    def __init__(self, cursor, conn, is_postgres=False):
+        self.cursor = cursor
+        self.conn = conn
+        self.is_postgres = is_postgres
+        self.last_inserted_id = None
+
+    def execute(self, query, params=None):
+        if self.is_postgres:
+            query_pg = query.replace('?', '%s')
+            query_pg = query_pg.replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
+            query_pg = query_pg.replace('DATETIME', 'TIMESTAMP')
+            
+            is_insert = 'INSERT INTO' in query_pg.upper()
+            if is_insert and 'RETURNING' not in query_pg.upper():
+                query_pg = query_pg.rstrip().rstrip(';') + ' RETURNING id;'
+
+            if params is None:
+                self.cursor.execute(query_pg)
+            else:
+                self.cursor.execute(query_pg, params)
+
+            if is_insert:
+                try:
+                    res = self.cursor.fetchone()
+                    if res:
+                        self.last_inserted_id = res['id'] if isinstance(res, dict) and 'id' in res else res[0]
+                except Exception:
+                    pass
+            return self.cursor
+        else:
+            if params is None:
+                return self.cursor.execute(query)
+            return self.cursor.execute(query, params)
+
+    def fetchone(self):
+        row = self.cursor.fetchone()
+        if not row:
+            return None
+        if isinstance(row, dict):
+            return row
+        if hasattr(row, 'keys'):
+            return dict(row)
+        return row
+
+    def fetchall(self):
+        rows = self.cursor.fetchall()
+        if not rows:
+            return []
+        res = []
+        for r in rows:
+            if isinstance(r, dict):
+                res.append(r)
+            elif hasattr(r, 'keys'):
+                res.append(dict(r))
+            else:
+                res.append(r)
+        return res
+
+    @property
+    def lastrowid(self):
+        if self.is_postgres:
+            return self.last_inserted_id or 1
+        return self.cursor.lastrowid
+
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    if DATABASE_URL and ('postgres://' in DATABASE_URL or 'postgresql://' in DATABASE_URL):
+        import psycopg2
+        import psycopg2.extras
+        pg_url = DATABASE_URL.replace('postgres://', 'postgresql://')
+        conn = psycopg2.connect(pg_url, cursor_factory=psycopg2.extras.RealDictCursor)
+        return DBWrapper(conn, is_postgres=True)
+    else:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        return DBWrapper(conn, is_postgres=False)
 
 def init_db():
     conn = get_db()
