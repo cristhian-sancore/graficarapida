@@ -185,9 +185,6 @@ async function cadastrarCliente(e) {
         document.getElementById('validar-cli-codigo').value = '';
 
         let msg = '📱 Código de validação enviado para o seu WhatsApp!';
-        if (data.codigo_dev) {
-          msg += `\n\n[MODO TESTE / DEV] Código gerado: ${data.codigo_dev}`;
-        }
         alert(msg);
       } else {
         state.clientToken = data.token;
@@ -257,9 +254,6 @@ async function reenviarCodigoWhatsApp(e) {
 
     if (res.ok) {
       let msg = '📱 Novo código enviado via WhatsApp!';
-      if (data.codigo_dev) {
-        msg += `\n\n[MODO TESTE / DEV] Código gerado: ${data.codigo_dev}`;
-      }
       alert(msg);
     } else {
       alert(data.error || 'Erro ao reenviar código.');
