@@ -29,6 +29,15 @@ if db_dir:
 
 DATABASE_URL = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRES_URL')
 
+class RowDict(dict):
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            vals = list(self.values())
+            if 0 <= key < len(vals):
+                return vals[key]
+            raise IndexError("RowDict index out of range")
+        return super().__getitem__(key)
+
 class DBWrapper:
     def __init__(self, conn, is_postgres=False):
         self.conn = conn
@@ -72,7 +81,7 @@ class CursorWrapper:
                 try:
                     res = self.cursor.fetchone()
                     if res:
-                        self.last_inserted_id = res['id'] if isinstance(res, dict) and 'id' in res else res[0]
+                        self.last_inserted_id = res['id'] if isinstance(res, (dict, RowDict)) and 'id' in res else res[0]
                 except Exception:
                     pass
             return self.cursor
@@ -97,10 +106,12 @@ class CursorWrapper:
         row = self.cursor.fetchone()
         if not row:
             return None
-        if isinstance(row, dict):
-            return row
+        if isinstance(row, (dict, RowDict)):
+            return RowDict(row)
         if hasattr(row, 'keys'):
-            return dict(row)
+            return RowDict({k: row[k] for k in row.keys()})
+        if isinstance(row, (list, tuple)):
+            return RowDict({i: row[i] for i in range(len(row))})
         return row
 
     def fetchall(self):
@@ -109,13 +120,16 @@ class CursorWrapper:
             return []
         res = []
         for r in rows:
-            if isinstance(r, dict):
-                res.append(r)
+            if isinstance(r, (dict, RowDict)):
+                res.append(RowDict(r))
             elif hasattr(r, 'keys'):
-                res.append(dict(r))
+                res.append(RowDict({k: r[k] for k in r.keys()}))
+            elif isinstance(r, (list, tuple)):
+                res.append(RowDict({i: r[i] for i in range(len(r))}))
             else:
                 res.append(r)
         return res
+
 
     @property
     def lastrowid(self):
@@ -1351,10 +1365,12 @@ def get_caixa_resumo():
     cursor = conn.cursor()
     
     cursor.execute("SELECT COALESCE(SUM(valor), 0) FROM caixa_movimentacoes WHERE tipo = 'ENTRADA'")
-    total_entradas = cursor.fetchone()[0]
+    r_ent = cursor.fetchone()
+    total_entradas = float(r_ent[0]) if r_ent and r_ent[0] is not None else 0.0
     
     cursor.execute("SELECT COALESCE(SUM(valor), 0) FROM caixa_movimentacoes WHERE tipo = 'SAIDA'")
-    total_saidas = cursor.fetchone()[0]
+    r_sai = cursor.fetchone()
+    total_saidas = float(r_sai[0]) if r_sai and r_sai[0] is not None else 0.0
     
     saldo_atual = total_entradas - total_saidas
     
@@ -1423,16 +1439,20 @@ def get_dashboard_metrics():
     cursor = conn.cursor()
     
     cursor.execute("SELECT COUNT(*) FROM pedidos")
-    total_pedidos = cursor.fetchone()[0]
+    r1 = cursor.fetchone()
+    total_pedidos = int(r1[0]) if r1 and r1[0] is not None else 0
     
     cursor.execute("SELECT COUNT(*) FROM pedidos WHERE status_producao IN ('Aguardando Pagamento', 'Em Análise de Arte', 'Em Impressão', 'Acabamento & Corte')")
-    pedidos_em_producao = cursor.fetchone()[0]
+    r2 = cursor.fetchone()
+    pedidos_em_producao = int(r2[0]) if r2 and r2[0] is not None else 0
     
     cursor.execute("SELECT COALESCE(SUM(total), 0) FROM pedidos WHERE status_pagamento = 'Aprovado'")
-    faturamento_total = cursor.fetchone()[0]
+    r3 = cursor.fetchone()
+    faturamento_total = float(r3[0]) if r3 and r3[0] is not None else 0.0
     
     cursor.execute("SELECT COUNT(*) FROM clientes")
-    total_clientes = cursor.fetchone()[0]
+    r4 = cursor.fetchone()
+    total_clientes = int(r4[0]) if r4 and r4[0] is not None else 0
     
     cursor.execute('''
         SELECT DATE(data_criacao) as dia, SUM(total) as total
@@ -1441,7 +1461,13 @@ def get_dashboard_metrics():
         GROUP BY DATE(data_criacao)
         ORDER BY dia DESC LIMIT 7
     ''')
-    vendas_dia = [dict(r) for r in cursor.fetchall()]
+    rows_vendas = cursor.fetchall()
+    vendas_dia = []
+    for r in rows_vendas:
+        vendas_dia.append({
+            'dia': str(r['dia']) if r.get('dia') is not None else '',
+            'total': float(r['total']) if r.get('total') is not None else 0.0
+        })
 
     conn.close()
     return jsonify({
@@ -1451,6 +1477,7 @@ def get_dashboard_metrics():
         'total_clientes': total_clientes,
         'vendas_dia': vendas_dia
     })
+
 
 if __name__ == '__main__':
     print("=" * 60)

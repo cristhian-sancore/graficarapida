@@ -72,18 +72,22 @@ function switchView(view) {
     vAdmin.style.display = 'flex';
     btnAdmin.innerHTML = '<i class="fa-solid fa-store"></i> Voltar ao Site';
     btnAdmin.className = 'btn btn-primary btn-sm';
+    btnAdmin.onclick = () => switchView('cliente');
     loadDashboardMetrics();
   } else if (view === 'portal-cliente') {
     vPortalCliente.style.display = 'block';
     btnAdmin.innerHTML = '<i class="fa-solid fa-user-shield"></i> Painel Admin';
     btnAdmin.className = 'btn btn-secondary btn-sm';
+    btnAdmin.onclick = () => abrirLoginAdminModal();
     carregarDadosPortalCliente();
   } else {
     vCliente.style.display = 'block';
     btnAdmin.innerHTML = '<i class="fa-solid fa-user-shield"></i> Painel Admin';
     btnAdmin.className = 'btn btn-secondary btn-sm';
+    btnAdmin.onclick = () => abrirLoginAdminModal();
   }
 }
+
 
 // --- AUTENTICAÇÃO DO CLIENTE ---
 
