@@ -934,14 +934,14 @@
 
   <!-- DRAWER: CARRINHO DE COMPRAS -->
   <div class="cart-drawer" id="cart-drawer">
-    <div class="cart-header">
+    <div class="cart-header" style="flex-shrink: 0;">
       <h3 style="font-size: 1.2rem; font-weight: 800;"><i class="fa-solid fa-cart-shopping"></i> Seu Carrinho</h3>
       <button class="modal-close" onclick="toggleCartDrawer()">&times;</button>
     </div>
 
-    <div class="cart-body" id="cart-body"></div>
+    <div class="cart-body">
+      <div id="cart-body" style="margin-bottom: 24px;"></div>
 
-    <div class="cart-footer">
       <div class="form-group" style="margin-bottom: 12px;">
         <label class="form-label">Possui Cupom de Desconto?</label>
         <div style="display: flex; gap: 8px;">
@@ -977,7 +977,9 @@
       <div class="form-group">
         <input type="text" class="form-control" id="checkout-telefone" placeholder="Seu WhatsApp com DDD *" required>
       </div>
+    </div>
 
+    <div class="cart-footer" style="flex-shrink: 0;">
       <div class="cart-total-row">
         <span>Total:</span>
         <span id="checkout-total-val" style="color: var(--primary);">R$ 0,00</span>
