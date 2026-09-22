@@ -695,8 +695,7 @@ function renderChips(containerId, list, initialVal) {
     </div>
   `).join('');
 
-
-  c.dataset.onSelect = onSelect;
+  // c.dataset.onSelect = onSelect;
 }
 
 function selectChip(el, containerId) {
