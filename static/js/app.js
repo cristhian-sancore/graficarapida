@@ -586,19 +586,6 @@ function filterCategory(cat, btn) {
   renderCatalog();
 }
 
-function renderCatalog() {
-  const container = document.getElementById('catalog-grid');
-  if (!container) return;
-  
-  const prods = state.activeCategory === 'Todos' 
-    ? state.produtos 
-    : state.produtos.filter(p => p.categoria === state.activeCategory);
-
-  if (prods.length === 0) {
-    container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted);">Nenhum produto encontrado nesta categoria.</div>';
-    return;
-  }
-
 function parseIfString(val) {
   if (!val) return [];
   if (Array.isArray(val)) return val;
@@ -612,6 +599,20 @@ function parseIfString(val) {
   }
   return [];
 }
+
+function renderCatalog() {
+  const container = document.getElementById('catalog-grid');
+  if (!container) return;
+  
+  const prods = state.activeCategory === 'Todos' 
+    ? state.produtos 
+    : state.produtos.filter(p => p.categoria === state.activeCategory);
+
+  if (prods.length === 0) {
+    container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted);">Nenhum produto encontrado nesta categoria.</div>';
+    return;
+  }
+
 
   container.innerHTML = prods.map(p => `
     <div class="product-card" onclick="openProdutoModal(${p.id})" style="cursor: pointer;">
