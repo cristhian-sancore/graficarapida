@@ -1500,7 +1500,7 @@ async function loadAdminProdutos() {
   }
 }
 
-function openProdutoModal() {
+function openAdminProdutoModal() {
   document.getElementById('admin-prod-id').value = '';
   document.getElementById('form-admin-produto').reset();
   document.getElementById('modal-admin-prod-title').innerText = 'Novo Produto';
