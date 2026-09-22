@@ -1033,6 +1033,40 @@ def api_produtos():
         conn.close()
         return jsonify({'message': 'Produto criado!', 'id': prod_id}), 201
 
+@app.route('/api/produtos/<int:produto_id>', methods=['PUT', 'DELETE'])
+def api_produto_detalhe(produto_id):
+    token = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token):
+        return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if request.method == 'PUT':
+        data = request.json
+        cursor.execute('''
+            UPDATE produtos 
+            SET nome = ?, categoria = ?, descricao = ?, preco_base = ?, imagem_url = ?, 
+                tamanhos_json = ?, papeis_json = ?, acabamentos_json = ?, tiragens_json = ?, ativo = ?, destaque = ?
+            WHERE id = ?
+        ''', (
+            data.get('nome'), data.get('categoria'), data.get('descricao'),
+            float(data.get('preco_base', 0)), data.get('imagem_url'),
+            json.dumps(data.get('tamanhos', [])), json.dumps(data.get('papeis', [])),
+            json.dumps(data.get('acabamentos', [])), json.dumps(data.get('tiragens', [])),
+            1 if data.get('ativo', True) else 0, 1 if data.get('destaque', False) else 0,
+            produto_id
+        ))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'Produto atualizado!'}), 200
+
+    elif request.method == 'DELETE':
+        cursor.execute('DELETE FROM produtos WHERE id = ?', (produto_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'Produto deletado!'}), 200
+
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
