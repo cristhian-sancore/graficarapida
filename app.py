@@ -1205,7 +1205,12 @@ def get_pedido_by_codigo(codigo):
         
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM pedidos WHERE codigo_pedido = ? OR id = ?', (codigo, codigo))
+    if codigo.lstrip('#').isdigit():
+        # Searching by ID (numeric)
+        cursor.execute('SELECT * FROM pedidos WHERE id = ? OR codigo_pedido = ?', (int(codigo.lstrip('#')), codigo))
+    else:
+        # Searching by codigo_pedido (string)
+        cursor.execute('SELECT * FROM pedidos WHERE codigo_pedido = ?', (codigo,))
     row = cursor.fetchone()
     if not row:
         conn.close()
