@@ -980,6 +980,9 @@ function confirmarEVerPedido() {
 // --- RASTREAMENTO DE PEDIDO ---
 
 function openMeusPedidosModal() {
+  document.getElementById('search-codigo-pedido').value = '';
+  const detalhes = document.getElementById('detalhes-pedido-rastreio');
+  if (detalhes) detalhes.style.display = 'none';
   openModal('modal-meus-pedidos');
 }
 
