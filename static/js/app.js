@@ -2,6 +2,40 @@
    APP JAVASCRIPT - GRÁFICA RÁPIDA EXPRESS (COM AUTENTICAÇÃO SEGURA)
    ========================================================================== */
 
+// --- SWEETALERT2 OVERRIDE ---
+window.originalAlert = window.alert;
+window.alert = function(msg) {
+  if (typeof Swal === 'undefined') return window.originalAlert(msg);
+  
+  let icon = 'info';
+  let title = 'Atenção';
+  
+  if (msg.includes('🎉') || msg.includes('✅') || msg.toLowerCase().includes('sucesso')) {
+    icon = 'success';
+    title = 'Sucesso!';
+  } else if (msg.includes('❌') || msg.includes('Erro') || msg.includes('inválid') || msg.includes('Falha') || msg.includes('não encontrad')) {
+    icon = 'error';
+    title = 'Oops...';
+  } else if (msg.includes('Por favor')) {
+    icon = 'warning';
+  }
+  
+  const isDark = document.body.classList.contains('dark-mode');
+  
+  Swal.fire({
+    title: title,
+    text: msg,
+    icon: icon,
+    confirmButtonColor: '#4f46e5',
+    confirmButtonText: 'OK',
+    background: isDark ? '#1e1e2d' : '#ffffff',
+    color: isDark ? '#f3f4f6' : '#1f2937',
+    customClass: {
+      popup: 'swal2-modern-popup'
+    }
+  });
+};
+
 const state = {
   produtos: [],
   config: {},
