@@ -991,7 +991,9 @@ async function consultarPedidoCliente() {
 
 async function consultarPedidoCodigo(codigo) {
   try {
-    const res = await fetch(`/api/pedidos/${encodeURIComponent(codigo)}`);
+    // Remove the # to avoid proxy/WAF issues with URL fragments, the backend will put it back
+    const safeCodigo = codigo.replace('#', '');
+    const res = await fetch(`/api/pedidos/${encodeURIComponent(safeCodigo)}`);
     const ped = await res.json();
 
     if (!res.ok) {
@@ -1658,29 +1660,96 @@ async function salvarCaixaMovimento(e) {
 
 // --- CLIENTES (ADMIN) ---
 
+window.allClientes = [];
+
 async function loadAdminClientes() {
   try {
     const res = await fetch('/api/clientes', {
       headers: { 'X-Admin-Token': state.adminToken }
     });
-    const clientes = await res.json();
+    window.allClientes = await res.json();
 
-    document.getElementById('admin-clientes-tbody').innerHTML = clientes.map(c => `
+    document.getElementById('admin-clientes-tbody').innerHTML = window.allClientes.map(c => `
       <tr>
         <td><strong>${c.nome}</strong></td>
         <td>${c.telefone}</td>
         <td>${c.email || '-'}</td>
         <td><span class="badge badge-info">${c.total_pedidos} pedidos</span></td>
-        <td style="font-weight: 800; color: var(--primary);">R$ ${c.total_gasto.toFixed(2).replace('.', ',')}</td>
-        <td>
-          <a href="https://wa.me/${c.telefone.replace(/\D/g, '')}" target="_blank" class="btn btn-secondary btn-sm" style="color: #25d366;">
-            <i class="fa-brands fa-whatsapp"></i> Conversar
+        <td style="font-weight: 800; color: var(--primary);">R$ ${(c.total_gasto || 0).toFixed(2).replace('.', ',')}</td>
+        <td style="display: flex; gap: 5px; flex-wrap: wrap;">
+          <a href="https://wa.me/${c.telefone.replace(/\D/g, '')}" target="_blank" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Conversar">
+            <i class="fa-brands fa-whatsapp"></i>
           </a>
+          <button class="btn btn-primary btn-sm" onclick="abrirModalEditarCliente(${c.id})" title="Editar">
+            <i class="fa-solid fa-pen"></i>
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="excluirClienteAdmin(${c.id})" title="Excluir">
+            <i class="fa-solid fa-trash"></i>
+          </button>
         </td>
       </tr>
     `).join('');
   } catch (err) {
     console.error('Erro clientes:', err);
+  }
+}
+
+function abrirModalEditarCliente(id) {
+  const cliente = window.allClientes.find(c => c.id === id);
+  if (!cliente) return;
+  document.getElementById('admin-cli-id').value = cliente.id;
+  document.getElementById('admin-cli-nome').value = cliente.nome;
+  document.getElementById('admin-cli-email').value = cliente.email;
+  document.getElementById('admin-cli-telefone').value = cliente.telefone;
+  document.getElementById('admin-cli-cpf').value = cliente.cpf_cnpj || '';
+  document.getElementById('admin-cli-endereco').value = cliente.endereco || '';
+  openModal('modal-admin-cliente');
+}
+
+async function salvarClienteAdmin(e) {
+  e.preventDefault();
+  const id = document.getElementById('admin-cli-id').value;
+  const data = {
+    nome: document.getElementById('admin-cli-nome').value,
+    email: document.getElementById('admin-cli-email').value,
+    telefone: document.getElementById('admin-cli-telefone').value,
+    cpf_cnpj: document.getElementById('admin-cli-cpf').value,
+    endereco: document.getElementById('admin-cli-endereco').value,
+  };
+
+  try {
+    const res = await fetch('/api/clientes/' + id, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Token': state.adminToken
+      },
+      body: JSON.stringify(data)
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Erro ao atualizar');
+    alert(json.message);
+    closeModal('modal-admin-cliente');
+    loadAdminClientes();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function excluirClienteAdmin(id) {
+  if (!confirm("Tem certeza que deseja excluir este cliente? Essa ação não pode ser desfeita!")) return;
+  
+  try {
+    const res = await fetch('/api/clientes/' + id, {
+      method: 'DELETE',
+      headers: { 'X-Admin-Token': state.adminToken }
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Erro ao excluir');
+    alert(json.message);
+    loadAdminClientes();
+  } catch (err) {
+    alert(err.message);
   }
 }
 

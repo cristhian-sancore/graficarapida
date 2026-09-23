@@ -1200,6 +1200,9 @@ def api_pedidos():
 
 @app.route('/api/pedidos/<codigo>', methods=['GET'])
 def get_pedido_by_codigo(codigo):
+    if not codigo.startswith('#'):
+        codigo = '#' + codigo
+        
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM pedidos WHERE codigo_pedido = ? OR id = ?', (codigo, codigo))
@@ -1441,6 +1444,53 @@ def add_caixa_movimento():
     conn.commit()
     conn.close()
     return jsonify({'message': 'Movimentação registrada!'})
+
+@app.route('/api/clientes/<int:cliente_id>', methods=['PUT'])
+def edit_cliente(cliente_id):
+    token = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token):
+        return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
+
+    data = request.json
+    nome = data.get('nome')
+    email = data.get('email')
+    telefone = data.get('telefone')
+    endereco = data.get('endereco', '')
+    cpf_cnpj = data.get('cpf_cnpj', '')
+
+    if not nome or not email or not telefone:
+        return jsonify({'error': 'Nome, E-mail e Telefone são obrigatórios'}), 400
+
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT id FROM clientes WHERE email = ? AND id != ?', (email, cliente_id))
+    if cursor.fetchone():
+        conn.close()
+        return jsonify({'error': 'E-mail já está em uso por outro cliente'}), 400
+
+    cursor.execute('''
+        UPDATE clientes 
+        SET nome = ?, email = ?, telefone = ?, endereco = ?, cpf_cnpj = ?
+        WHERE id = ?
+    ''', (nome, email, telefone, endereco, cpf_cnpj, cliente_id))
+    
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Cliente atualizado com sucesso!'})
+
+@app.route('/api/clientes/<int:cliente_id>', methods=['DELETE'])
+def delete_cliente(cliente_id):
+    token = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token):
+        return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM clientes WHERE id = ?', (cliente_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Cliente excluído com sucesso!'})
 
 @app.route('/api/clientes', methods=['GET'])
 def get_clientes():

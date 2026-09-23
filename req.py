@@ -1,0 +1,93 @@
+import urllib.request, json, urllib.error
+import io
+
+stack_file = """version: '3.8'
+
+services:
+  # BANCO DE DADOS POSTGRESQL (Sem expor porta externa 5432 para evitar conflitos no host)
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: grafica_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: graficadb
+      POSTGRES_USER: graficauser
+      POSTGRES_PASSWORD: graficapassword2026
+    networks:
+      - grafica
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U graficauser -d graficadb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # APLICAÇÃO WEB DA GRÁFICA RÁPIDA
+  grafica-express:
+    image: ghcr.io/cristhian-sancore/graficarapida:latest
+    container_name: grafica_rapida_portainer
+    restart: always
+    ports:
+      - "8050:8050"
+    environment:
+      - PORT=8050
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://graficauser:graficapassword2026@postgres-db:5432/graficadb
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    networks:
+      grafica:
+      rede:
+        aliases:
+          - grafica
+          - grafica-express
+          - grafica_express
+          - grafica-rapida
+          - grafica_rapida
+          - grafica_rapida_express
+          - grafica_rapida_portainer
+          - grafica_rapida_app
+    volumes:
+      - grafica_uploads_data:/app/static/uploads
+
+networks:
+  grafica:
+    name: grafica
+    driver: bridge
+  rede:
+    name: rede
+    external: true
+
+volumes:
+  postgres_data:
+    driver: local
+  grafica_uploads_data:
+    driver: local
+"""
+
+data=json.dumps({
+  'StackFileContent': stack_file,
+  'Env': [],
+  'Prune': True,
+  'PullImage': True
+}).encode('utf-8')
+
+req=urllib.request.Request(
+    'http://31.220.109.77:9000/api/stacks/5?endpointId=3', 
+    data=data, 
+    headers={
+        'X-API-Key':'ptr_lAN6YCnewyI6ihQaNy5Fr9vfAmmgdalv7q6vANl5h/g=', 
+        'Content-Type':'application/json'
+    }, 
+    method='PUT'
+)
+
+try:
+    res = urllib.request.urlopen(req)
+    print("SUCCESS")
+    print(res.read().decode('utf-8'))
+except urllib.error.HTTPError as e:
+    print('HTTP ERROR', e.code)
+    print(e.read().decode('utf-8'))

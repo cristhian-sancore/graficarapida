@@ -1268,6 +1268,41 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="modal-admin-cliente">
+    <div class="modal-container" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Editar Cliente</h3>
+        <button class="modal-close" onclick="closeModal('modal-admin-cliente')" type="button">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-admin-cliente" onsubmit="salvarClienteAdmin(event)">
+          <input type="hidden" id="admin-cli-id">
+          <div style="margin-bottom: 15px;">
+            <label class="form-label">Nome *</label>
+            <input type="text" id="admin-cli-nome" class="form-control" required>
+          </div>
+          <div style="margin-bottom: 15px;">
+            <label class="form-label">E-mail *</label>
+            <input type="email" id="admin-cli-email" class="form-control" required>
+          </div>
+          <div style="margin-bottom: 15px;">
+            <label class="form-label">Telefone/WhatsApp *</label>
+            <input type="text" id="admin-cli-telefone" class="form-control" required>
+          </div>
+          <div style="margin-bottom: 15px;">
+            <label class="form-label">CPF / CNPJ</label>
+            <input type="text" id="admin-cli-cpf" class="form-control">
+          </div>
+          <div style="margin-bottom: 15px;">
+            <label class="form-label">Endereço Completo</label>
+            <input type="text" id="admin-cli-endereco" class="form-control">
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Salvar Alterações</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- JavaScript Main App -->
   <script src="/static/js/app.js?v=2.2"></script>
 </body>
