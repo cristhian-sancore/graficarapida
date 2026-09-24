@@ -8,7 +8,7 @@ import random
 import urllib.request
 import urllib.parse
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory, g, has_request_context
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -43,18 +43,26 @@ class DBWrapper:
     def __init__(self, conn, is_postgres=False):
         self.conn = conn
         self.is_postgres = is_postgres
+        self.is_closed = False
 
     def cursor(self):
         return CursorWrapper(self.conn.cursor(), self.conn, self.is_postgres)
 
     def commit(self):
-        return self.conn.commit()
+        if not self.is_closed:
+            return self.conn.commit()
 
     def rollback(self):
-        return self.conn.rollback()
+        if not self.is_closed:
+            return self.conn.rollback()
 
     def close(self):
-        return self.conn.close()
+        if not self.is_closed:
+            self.is_closed = True
+            try:
+                return self.conn.close()
+            except Exception:
+                pass
 
 class CursorWrapper:
     def __init__(self, cursor, conn, is_postgres=False):
@@ -139,16 +147,39 @@ class CursorWrapper:
         return self.cursor.lastrowid
 
 def get_db():
-    if DATABASE_URL and ('postgres://' in DATABASE_URL or 'postgresql://' in DATABASE_URL):
-        import psycopg2
-        import psycopg2.extras
-        pg_url = DATABASE_URL.replace('postgres://', 'postgresql://')
-        conn = psycopg2.connect(pg_url, cursor_factory=psycopg2.extras.RealDictCursor)
-        return DBWrapper(conn, is_postgres=True)
+    if has_request_context():
+        if not hasattr(g, '_db_conn') or g._db_conn is None or getattr(g._db_conn, 'is_closed', False):
+            if DATABASE_URL and ('postgres://' in DATABASE_URL or 'postgresql://' in DATABASE_URL):
+                import psycopg2
+                import psycopg2.extras
+                pg_url = DATABASE_URL.replace('postgres://', 'postgresql://')
+                conn = psycopg2.connect(pg_url, cursor_factory=psycopg2.extras.RealDictCursor)
+                g._db_conn = DBWrapper(conn, is_postgres=True)
+            else:
+                conn = sqlite3.connect(DB_PATH)
+                conn.row_factory = sqlite3.Row
+                g._db_conn = DBWrapper(conn, is_postgres=False)
+        return g._db_conn
     else:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        return DBWrapper(conn, is_postgres=False)
+        if DATABASE_URL and ('postgres://' in DATABASE_URL or 'postgresql://' in DATABASE_URL):
+            import psycopg2
+            import psycopg2.extras
+            pg_url = DATABASE_URL.replace('postgres://', 'postgresql://')
+            conn = psycopg2.connect(pg_url, cursor_factory=psycopg2.extras.RealDictCursor)
+            return DBWrapper(conn, is_postgres=True)
+        else:
+            conn = sqlite3.connect(DB_PATH)
+            conn.row_factory = sqlite3.Row
+            return DBWrapper(conn, is_postgres=False)
+
+@app.teardown_appcontext
+def close_db(error=None):
+    if has_request_context() and hasattr(g, '_db_conn') and g._db_conn is not None:
+        try:
+            g._db_conn.close()
+        except Exception:
+            pass
+        g._db_conn = None
 
 def safe_add_column(cursor, conn, table, column_def):
     try:
@@ -561,7 +592,7 @@ init_db()
 
 # --- HELPER EVOLUTION API WHATSAPP ---
 
-def send_evolution_whatsapp(numero, mensagem, custom_url=None, custom_key=None, custom_instance=None, media_base64=None, media_type=None, media_mime=None, media_name=None):
+def send_evolution_whatsapp(numero, mensagem, custom_url=None, custom_key=None, custom_instance=None, media_base64=None, media_type=None, media_mime=None, media_name=None, media_url=None):
     if custom_url and custom_key and custom_instance:
         api_url = str(custom_url).strip().rstrip('/')
         api_key = str(custom_key).strip()
@@ -598,12 +629,17 @@ def send_evolution_whatsapp(numero, mensagem, custom_url=None, custom_key=None, 
         'User-Agent': 'Mozilla/5.0'
     }
 
+    # Preparar payload de mídia se houver
+    media_target = media_url
+    if not media_target and media_base64:
+        media_target = str(media_base64).split(',')[-1] if ',' in str(media_base64) else str(media_base64)
+
     ultimo_erro = "Falha ao enviar mensagem."
     for target_num in numeros_para_tentar:
-        if media_base64:
+        if media_target:
             if media_type == 'audio':
                 endpoint = f"{api_url}/message/sendWhatsAppAudio/{instance}"
-                payload_dict = {"number": target_num, "audio": media_base64}
+                payload_dict = {"number": target_num, "audio": media_target}
             else:
                 endpoint = f"{api_url}/message/sendMedia/{instance}"
                 payload_dict = {
@@ -611,7 +647,7 @@ def send_evolution_whatsapp(numero, mensagem, custom_url=None, custom_key=None, 
                     "mediatype": media_type or "document",
                     "mimetype": media_mime or "application/octet-stream",
                     "caption": mensagem if mensagem and mensagem != "none" else "",
-                    "media": media_base64,
+                    "media": media_target,
                     "fileName": media_name or "arquivo"
                 }
         else:
@@ -1009,8 +1045,19 @@ def api_config():
     
     if request.method == 'GET':
         cursor.execute('SELECT * FROM configuracoes LIMIT 1')
-        config = dict(cursor.fetchone())
+        row = cursor.fetchone()
         conn.close()
+        config = dict(row) if row else {
+            'nome_grafica': 'Gráfica Rápida Express',
+            'whatsapp': '5511999998888',
+            'chave_pix': 'pix@graficarapidaexpress.com.br',
+            'banner_titulo': 'Sua Impressão Rápida, Sem Complicação!',
+            'banner_subtitulo': 'Cartões de visita, panfletos, banners e adesivos com entrega expressa.',
+            'aviso_topo': '⚡ Atendimento Express!',
+            'desconto_pix': 5.0,
+            'taxa_entrega': 15.0,
+            'validar_whatsapp_ativo': 1
+        }
         return jsonify(config)
     
     elif request.method == 'PUT':
@@ -1018,18 +1065,18 @@ def api_config():
         if not get_current_admin(token):
             return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
 
-        data = request.json
+        data = request.get_json(silent=True) or {}
         cursor.execute('''
             UPDATE configuracoes SET
                 nome_grafica = ?, whatsapp = ?, chave_pix = ?, banner_titulo = ?,
                 banner_subtitulo = ?, aviso_topo = ?, desconto_pix = ?, taxa_entrega = ?,
                 evolution_api_url = ?, evolution_api_key = ?, evolution_instance = ?,
                 validar_whatsapp_ativo = ?
-            WHERE id = 1
+            WHERE id = (SELECT id FROM configuracoes LIMIT 1)
         ''', (
             data.get('nome_grafica'), data.get('whatsapp'), data.get('chave_pix'),
             data.get('banner_titulo'), data.get('banner_subtitulo'), data.get('aviso_topo'),
-            data.get('desconto_pix', 5.0), data.get('taxa_entrega', 15.0),
+            float(data.get('desconto_pix') or 5.0), float(data.get('taxa_entrega') or 15.0),
             data.get('evolution_api_url'), data.get('evolution_api_key'), data.get('evolution_instance'),
             1 if data.get('validar_whatsapp_ativo', True) else 0
         ))
@@ -1168,9 +1215,9 @@ def api_pedidos():
         return jsonify(pedidos)
 
     elif request.method == 'POST':
-        data = request.json
-        cliente = data.get('cliente', {})
-        itens = data.get('itens', [])
+        data = request.get_json(silent=True) or {}
+        cliente = data.get('cliente', {}) or {}
+        itens = data.get('itens', []) or []
         cupom_codigo = data.get('cupom')
         
         if not cliente.get('nome') or not cliente.get('telefone'):
@@ -1187,9 +1234,9 @@ def api_pedidos():
                 
         codigo_pedido = f"#GF-{datetime.now().strftime('%m%d')}{uuid.uuid4().hex[:4].upper()}"
         
-        total = float(data.get('total', 0))
-        desconto = float(data.get('desconto', 0))
-        taxa_entrega = float(data.get('taxa_entrega', 0))
+        total = float(data.get('total') or 0)
+        desconto = float(data.get('desconto') or 0)
+        taxa_entrega = float(data.get('taxa_entrega') or 0)
         metodo_pagamento = data.get('metodo_pagamento', 'PIX')
         tipo_entrega = data.get('tipo_entrega', 'Balcao')
         endereco_entrega = data.get('endereco_entrega', '')
@@ -1220,8 +1267,8 @@ def api_pedidos():
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 pedido_id, it.get('produto_id'), it.get('produto_nome'), it.get('tamanho'),
-                it.get('papel'), it.get('acabamento'), int(it.get('quantidade', 1)),
-                float(it.get('preco_unitario', 0)), float(it.get('preco_total', 0)),
+                it.get('papel'), it.get('acabamento'), int(it.get('quantidade') or 1),
+                float(it.get('preco_unitario') or 0), float(it.get('preco_total') or 0),
                 it.get('arte_url'), 1 if it.get('criar_arte') else 0, it.get('detalhes_arte', '')
             ))
 
@@ -1346,32 +1393,36 @@ def api_estoque():
         return jsonify(insumos)
 
     elif request.method == 'POST':
-        data = request.json
+        data = request.get_json(silent=True) or {}
         cursor.execute('''
             INSERT INTO estoque_insumos (nome_insumo, categoria, quantidade_atual, quantidade_minima, unidade_medida, custo_unitario)
             VALUES (?, ?, ?, ?, ?, ?)
-        ''', (data.get('nome_insumo'), data.get('categoria'), float(data.get('quantidade_atual', 0)), float(data.get('quantidade_minima', 0)), data.get('unidade_medida', 'Unidades'), float(data.get('custo_unitario', 0))))
+        ''', (data.get('nome_insumo'), data.get('categoria'), float(data.get('quantidade_atual') or 0), float(data.get('quantidade_minima') or 0), data.get('unidade_medida', 'Unidades'), float(data.get('custo_unitario') or 0)))
         conn.commit()
         conn.close()
         return jsonify({'message': 'Insumo cadastrado!'}), 201
 
     elif request.method == 'PUT':
-        data = request.json
+        data = request.get_json(silent=True) or {}
         if data.get('nome_insumo'):
             cursor.execute('''
                 UPDATE estoque_insumos SET nome_insumo = ?, categoria = ?, quantidade_atual = ?, quantidade_minima = ?, unidade_medida = ? WHERE id = ?
-            ''', (data.get('nome_insumo'), data.get('categoria'), float(data.get('quantidade_atual')), float(data.get('quantidade_minima')), data.get('unidade_medida'), data.get('id')))
+            ''', (data.get('nome_insumo'), data.get('categoria'), float(data.get('quantidade_atual') or 0), float(data.get('quantidade_minima') or 0), data.get('unidade_medida'), data.get('id')))
         else:
             cursor.execute('''
                 UPDATE estoque_insumos SET quantidade_atual = ?, quantidade_minima = ? WHERE id = ?
-            ''', (float(data.get('quantidade_atual')), float(data.get('quantidade_minima')), data.get('id')))
+            ''', (float(data.get('quantidade_atual') or 0), float(data.get('quantidade_minima') or 0), data.get('id')))
         conn.commit()
         conn.close()
         return jsonify({'message': 'Estoque atualizado!'})
 
     elif request.method == 'DELETE':
-        data = request.json
-        cursor.execute('DELETE FROM estoque_insumos WHERE id = ?', (data.get('id'),))
+        data = request.get_json(silent=True) or {}
+        insumo_id = data.get('id') or request.args.get('id')
+        if not insumo_id:
+            conn.close()
+            return jsonify({'error': 'ID do insumo é obrigatório.'}), 400
+        cursor.execute('DELETE FROM estoque_insumos WHERE id = ?', (insumo_id,))
         conn.commit()
         conn.close()
         return jsonify({'message': 'Insumo removido!'})
@@ -2082,7 +2133,7 @@ def api_chat_telefone_post(telefone):
     if not get_current_admin(token_admin):
         return jsonify({'error': 'Acesso negado'}), 401
         
-    data = request.json
+    data = request.get_json(silent=True) or {}
     mensagem = data.get('mensagem', '').strip()
     file_b64 = data.get('file_base64')
     file_name = data.get('file_name', 'arquivo')
@@ -2093,6 +2144,7 @@ def api_chat_telefone_post(telefone):
         return jsonify({'error': 'Mensagem vazia'}), 400
 
     media_path_db = None
+    media_full_url = None
     if file_b64:
         import base64, uuid, os
         try:
@@ -2104,6 +2156,11 @@ def api_chat_telefone_post(telefone):
             with open(filepath, 'wb') as f:
                 f.write(file_bytes)
             media_path_db = f"/static/uploads/{saved_name}"
+            
+            # URL pública para envio na Evolution API
+            app_host = os.environ.get('APP_URL', 'https://grafica.cristhiansancore.com.br').rstrip('/')
+            media_full_url = f"{app_host}{media_path_db}"
+            
             if not mensagem or mensagem == 'none':
                 mensagem = f"[MEDIA]:{media_path_db}"
             else:
@@ -2113,7 +2170,15 @@ def api_chat_telefone_post(telefone):
             
     msg_envio = data.get('mensagem', '')
     if file_b64:
-        success, err = send_evolution_whatsapp(telefone, msg_envio, media_base64=file_b64, media_type=file_type, media_mime=file_mime, media_name=file_name)
+        success, err = send_evolution_whatsapp(
+            telefone, 
+            msg_envio, 
+            media_base64=file_b64, 
+            media_url=media_full_url, 
+            media_type=file_type, 
+            media_mime=file_mime, 
+            media_name=file_name
+        )
     else:
         success, err = send_evolution_whatsapp(telefone, msg_envio)
         
@@ -2129,6 +2194,22 @@ def api_chat_telefone_post(telefone):
     conn.commit()
     conn.close()
     return jsonify({'status': 'sucesso'})
+
+@app.route('/api/chat/telefone/<path:telefone>/read', methods=['POST'])
+def api_chat_telefone_read(telefone):
+    token_admin = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token_admin):
+        return jsonify({'error': 'Acesso negado'}), 401
+        
+    conn = get_db()
+    cursor = conn.cursor()
+    if cursor.is_postgres:
+        cursor.execute("UPDATE mensagens_chat SET lida = 1 WHERE telefone_cliente = %s AND remetente_tipo = 'cliente'", (telefone,))
+    else:
+        cursor.execute("UPDATE mensagens_chat SET lida = 1 WHERE telefone_cliente = ? AND remetente_tipo = 'cliente'", (telefone,))
+    conn.commit()
+    conn.close()
+    return jsonify({'status': 'lidas'})
 
 @app.route('/api/chat/telefone/<path:telefone>', methods=['DELETE'])
 def api_chat_telefone_delete(telefone):
@@ -2275,14 +2356,13 @@ def api_chat_save_contact():
     # Generate new password
     import random
     import string
-    import bcrypt
     senha = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
-    senha_hash = bcrypt.hashpw(senha.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    senha_hash = generate_password_hash(senha)
     
     if cursor.is_postgres:
-        cursor.execute("INSERT INTO clientes (nome, email, telefone, senha_hash, is_admin) VALUES (%s, %s, %s, %s, 0)", (nome, f"{telefone}@wa.me", telefone, senha_hash))
+        cursor.execute("INSERT INTO clientes (nome, email, telefone, senha_hash, status_validacao) VALUES (%s, %s, %s, %s, 'Ativo')", (nome, f"{telefone}@wa.me", telefone, senha_hash))
     else:
-        cursor.execute("INSERT INTO clientes (nome, email, telefone, senha_hash, is_admin) VALUES (?, ?, ?, ?, 0)", (nome, f"{telefone}@wa.me", telefone, senha_hash))
+        cursor.execute("INSERT INTO clientes (nome, email, telefone, senha_hash, status_validacao) VALUES (?, ?, ?, ?, 'Ativo')", (nome, f"{telefone}@wa.me", telefone, senha_hash))
     
     conn.commit()
     conn.close()
@@ -2296,24 +2376,37 @@ def api_chat_read(codigo):
         return jsonify({"error": "Acesso negado"}), 401
         
     remetente_esperado = "cliente" if token_admin else "admin"
-    telefone = request.json.get("telefone", "")
+    data = request.get_json(silent=True) or {}
+    telefone = data.get("telefone", "")
     
+    # Se o path recebido for "telefone/..." redireciona
+    if codigo and codigo.startswith("telefone/"):
+        telefone = codigo.replace("telefone/", "").strip()
+        codigo = None
+
     conn = get_db()
     cursor = conn.cursor()
     if cursor.is_postgres:
-        query = "UPDATE mensagens_chat SET lida = 1 WHERE referencia_codigo = %s AND remetente_tipo = %s"
-        params = [codigo, remetente_esperado]
-        if telefone:
-            query += " AND telefone_cliente = %s"
-            params.append(telefone)
-        cursor.execute(query, tuple(params))
+        if codigo:
+            query = "UPDATE mensagens_chat SET lida = 1 WHERE referencia_codigo = %s AND remetente_tipo = %s"
+            params = [codigo, remetente_esperado]
+            if telefone:
+                query += " AND telefone_cliente = %s"
+                params.append(telefone)
+            cursor.execute(query, tuple(params))
+        elif telefone:
+            cursor.execute("UPDATE mensagens_chat SET lida = 1 WHERE telefone_cliente = %s AND remetente_tipo = %s", (telefone, remetente_esperado))
     else:
-        query = "UPDATE mensagens_chat SET lida = 1 WHERE referencia_codigo = ? AND remetente_tipo = ?"
-        params = [codigo, remetente_esperado]
-        if telefone:
-            query += " AND telefone_cliente = ?"
-            params.append(telefone)
-        cursor.execute(query, tuple(params))
+        if codigo:
+            query = "UPDATE mensagens_chat SET lida = 1 WHERE referencia_codigo = ? AND remetente_tipo = ?"
+            params = [codigo, remetente_esperado]
+            if telefone:
+                query += " AND telefone_cliente = ?"
+                params.append(telefone)
+            cursor.execute(query, tuple(params))
+        elif telefone:
+            cursor.execute("UPDATE mensagens_chat SET lida = 1 WHERE telefone_cliente = ? AND remetente_tipo = ?", (telefone, remetente_esperado))
+            
     conn.commit()
     conn.close()
     return jsonify({"status": "lidas"})

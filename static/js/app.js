@@ -112,6 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadProdutos();
   updateCartBadge();
   verificarSessaoCliente();
+  verificarSessaoAdmin();
   
   if (localStorage.getItem('grafica_theme') === 'dark') {
     document.documentElement.setAttribute('data-theme', 'dark');
@@ -377,6 +378,28 @@ function atualizarUIClienteLogado() {
 
 // --- AUTENTICAÃ‡ÃƒO DO ADMINISTRADOR ---
 
+function logoutAdminSilently() {
+  state.adminToken = '';
+  state.adminLogado = null;
+  localStorage.removeItem('grafica_adm_token');
+}
+
+async function verificarSessaoAdmin() {
+  if (!state.adminToken) return;
+  try {
+    const res = await fetch('/api/auth/admin/me', {
+      headers: { 'X-Admin-Token': state.adminToken }
+    });
+    if (res.ok) {
+      state.adminLogado = await res.json();
+    } else if (res.status === 401 || res.status === 403) {
+      logoutAdminSilently();
+    }
+  } catch (err) {
+    console.error('Erro checando sessão admin:', err);
+  }
+}
+
 async function abrirLoginAdminModal() {
   if (state.adminToken) {
     try {
@@ -387,6 +410,8 @@ async function abrirLoginAdminModal() {
         state.adminLogado = await res.json();
         switchView('admin');
         return;
+      } else if (res.status === 401 || res.status === 403) {
+        logoutAdminSilently();
       }
     } catch (err) {}
   }
@@ -413,7 +438,7 @@ async function loginAdmin(e) {
       closeModal('modal-auth-admin');
       switchView('admin');
     } else {
-      alert(data.error || 'Credenciais invÃ¡lidas!');
+      alert(data.error || 'Credenciais inválidas!');
     }
   } catch (err) {
     console.error('Erro login admin:', err);
@@ -421,9 +446,7 @@ async function loginAdmin(e) {
 }
 
 function logoutAdmin() {
-  state.adminToken = '';
-  state.adminLogado = null;
-  localStorage.removeItem('grafica_adm_token');
+  logoutAdminSilently();
   switchView('cliente');
 }
 
@@ -1474,6 +1497,25 @@ async function imprimirOS(pedidoId) {
   }
 }
 
+async function excluirPedidoAdmin(pedidoId) {
+  if (!(await window.confirmAsync(`Deseja realmente excluir o pedido #${pedidoId}? Esta ação não pode ser desfeita.`))) return;
+  try {
+    const res = await fetch(`/api/pedidos/${pedidoId}`, {
+      method: 'DELETE',
+      headers: { 'X-Admin-Token': state.adminToken }
+    });
+    if (res.ok) {
+      if (state.adminTab === 'kanban') loadKanbanBoard();
+      else loadAdminPedidos();
+    } else {
+      const data = await res.json();
+      alert(data.error || 'Erro ao excluir pedido.');
+    }
+  } catch (err) {
+    console.error('Erro ao excluir pedido:', err);
+  }
+}
+
 // --- ESTOQUE DE INSUMOS ---
 
 async function loadAdminEstoque() {
@@ -1507,18 +1549,23 @@ async function loadAdminEstoque() {
 }
 
 function openInsumoModal() {
+  const form = document.getElementById('form-admin-insumo');
+  if (form) {
+    delete form.dataset.id;
+    form.reset();
+  }
   openModal('modal-admin-insumo');
 }
 
 async function salvarInsumoAdmin(e) {
   e.preventDefault();
   const form = document.getElementById('form-admin-insumo');
-  const id = form.dataset.id;
+  const id = form ? form.dataset.id : null;
   const payload = {
     nome_insumo: document.getElementById('insumo-nome').value,
     categoria: document.getElementById('insumo-categoria').value,
-    quantidade_atual: parseFloat(document.getElementById('insumo-qtd').value),
-    quantidade_minima: parseFloat(document.getElementById('insumo-qtd-min').value),
+    quantidade_atual: parseFloat(document.getElementById('insumo-qtd').value || 0),
+    quantidade_minima: parseFloat(document.getElementById('insumo-qtd-min').value || 0),
     unidade_medida: document.getElementById('insumo-unidade').value
   };
   if (id) payload.id = id;
@@ -1557,6 +1604,28 @@ async function ajustarEstoqueInsumo(id, qtdAtual) {
     loadAdminEstoque();
   } catch (err) {
     console.error('Erro ajustar estoque:', err);
+  }
+}
+
+async function excluirInsumoAdmin(id) {
+  if (!(await window.confirmAsync('Deseja realmente excluir este insumo?'))) return;
+  try {
+    const res = await fetch(`/api/estoque?id=${id}`, {
+      method: 'DELETE',
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-Admin-Token': state.adminToken 
+      },
+      body: JSON.stringify({ id })
+    });
+    if (res.ok) {
+      loadAdminEstoque();
+    } else {
+      const data = await res.json();
+      alert(data.error || 'Erro ao excluir insumo.');
+    }
+  } catch (err) {
+    console.error('Erro ao excluir insumo:', err);
   }
 }
 
@@ -2280,6 +2349,8 @@ async function checkUnreadBadges() {
             badge.style.display = "none";
           }
         }
+      } else if (res.status === 401 || res.status === 403) {
+        logoutAdminSilently();
       }
     } catch(e) {}
   }
@@ -2302,6 +2373,8 @@ async function checkUnreadBadges() {
             badge.style.display = "none";
           }
         }
+      } else if (res.status === 401 || res.status === 403) {
+        logoutCliente();
       }
     } catch(e) {}
   }
@@ -2314,7 +2387,10 @@ async function loadWhatsAppInbox() {
   if (!state.adminToken) return;
   try {
     const res = await fetch("/api/chat/inbox", { headers: { "X-Admin-Token": state.adminToken } });
-    if (!res.ok) return;
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) logoutAdminSilently();
+      return;
+    }
     const conversas = await res.json();
     
     const list = document.getElementById("inbox-list");
@@ -2419,11 +2495,11 @@ async function confirmSaveContact() {
 }
 
 async function apagarConversaInbox() {
-  if (!currentInboxChat || !currentInboxTel || !state.adminToken) return;
+  if (!currentInboxTel || !state.adminToken) return;
   if (!(await window.confirmAsync("Tem certeza que deseja apagar essa conversa inteira?"))) return;
   
   try {
-    const res = await fetch(`/api/chat/${encodeURIComponent(currentInboxChat)}?telefone=${encodeURIComponent(currentInboxTel)}`, {
+    const res = await fetch(`/api/chat/telefone/${encodeURIComponent(currentInboxTel)}`, {
       method: "DELETE",
       headers: { "X-Admin-Token": state.adminToken }
     });
@@ -2435,16 +2511,22 @@ async function apagarConversaInbox() {
       document.getElementById("inbox-input-area").style.display = "none";
       document.getElementById("inbox-actions").style.display = "none";
       document.getElementById("inbox-messages").innerHTML = "";
+      if (inboxInterval) clearInterval(inboxInterval);
       loadWhatsAppInbox();
     }
-  } catch(e) {}
+  } catch(e) {
+    console.error("Erro ao apagar conversa:", e);
+  }
 }
 
 async function carregarMensagensInbox() {
   if (!currentInboxTel || !state.adminToken) return;
   try {
     const res = await fetch(`/api/chat/telefone/${encodeURIComponent(currentInboxTel)}`, { headers: { "X-Admin-Token": state.adminToken } });
-    if (!res.ok) return;
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) logoutAdminSilently();
+      return;
+    }
     const mensagens = await res.json();
     
     const filtered = mensagens;

@@ -49,7 +49,7 @@ req=urllib.request.Request(
     'http://31.220.109.77:9000/api/stacks/5?endpointId=3', 
     data=data, 
     headers={
-        'X-API-Key':'ptr_lAN6YCnewyI6ihQaNy5Fr9vfAmmgdalv7q6vANl5h/g=', 
+        'X-API-Key':'ptr_sMXw7zPj+YZ5R2QpH0TlO7VNwK8dKdL2IbgvBSFkK80=', 
         'Content-Type':'application/json'
     }, 
     method='PUT'
