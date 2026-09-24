@@ -561,7 +561,7 @@ init_db()
 
 # --- HELPER EVOLUTION API WHATSAPP ---
 
-def send_evolution_whatsapp(numero, mensagem, custom_url=None, custom_key=None, custom_instance=None):
+def send_evolution_whatsapp(numero, mensagem, custom_url=None, custom_key=None, custom_instance=None, media_base64=None, media_type=None, media_mime=None, media_name=None):
     if custom_url and custom_key and custom_instance:
         api_url = str(custom_url).strip().rstrip('/')
         api_key = str(custom_key).strip()
@@ -592,7 +592,6 @@ def send_evolution_whatsapp(numero, mensagem, custom_url=None, custom_key=None, 
         if num_sem_9 not in numeros_para_tentar:
             numeros_para_tentar.append(num_sem_9)
 
-    endpoint = f"{api_url}/message/sendText/{instance}"
     headers = {
         'Content-Type': 'application/json',
         'apikey': api_key,
@@ -601,7 +600,25 @@ def send_evolution_whatsapp(numero, mensagem, custom_url=None, custom_key=None, 
 
     ultimo_erro = "Falha ao enviar mensagem."
     for target_num in numeros_para_tentar:
-        payload = json.dumps({"number": target_num, "text": mensagem}).encode('utf-8')
+        if media_base64:
+            if media_type == 'audio':
+                endpoint = f"{api_url}/message/sendWhatsAppAudio/{instance}"
+                payload_dict = {"number": target_num, "audio": media_base64}
+            else:
+                endpoint = f"{api_url}/message/sendMedia/{instance}"
+                payload_dict = {
+                    "number": target_num,
+                    "mediatype": media_type or "document",
+                    "mimetype": media_mime or "application/octet-stream",
+                    "caption": mensagem if mensagem and mensagem != "none" else "",
+                    "media": media_base64,
+                    "fileName": media_name or "arquivo"
+                }
+        else:
+            endpoint = f"{api_url}/message/sendText/{instance}"
+            payload_dict = {"number": target_num, "text": mensagem}
+            
+        payload = json.dumps(payload_dict).encode('utf-8')
         try:
             req = urllib.request.Request(endpoint, data=payload, headers=headers, method='POST')
             with urllib.request.urlopen(req, timeout=12) as response:
@@ -1843,7 +1860,54 @@ def webhook_evolution():
             return jsonify({'status': 'ignorado'}), 200
             
         remote_jid = data_payload.get('key', {}).get('remoteJid', '')
+        
         text = messages.get('conversation') or messages.get('extendedTextMessage', {}).get('text')
+        messageType = data_payload.get('messageType')
+        if not messageType and messages:
+            messageType = list(messages.keys())[0] if list(messages.keys())[0] != 'messageContextInfo' else (list(messages.keys())[1] if len(messages)>1 else 'text')
+
+        # Se for mídia, vamos tentar pegar o base64
+        media_types = ['imageMessage', 'audioMessage', 'videoMessage', 'documentMessage', 'stickerMessage']
+        if messageType in media_types:
+            import urllib.request, json, time, os, uuid
+            # Buscar configs
+            conn = get_db()
+            cursor = conn.cursor()
+            cursor.execute('SELECT evolution_api_url, evolution_api_key, evolution_instance FROM configuracoes LIMIT 1')
+            cfg = cursor.fetchone()
+            conn.close()
+            
+            if cfg and dict(cfg).get('evolution_api_url'):
+                try:
+                    url_base64 = f"{dict(cfg)['evolution_api_url']}/chat/getBase64FromMediaMessage/{dict(cfg)['evolution_instance']}"
+                    req_b64 = urllib.request.Request(url_base64, method='POST')
+                    req_b64.add_header('Content-Type', 'application/json')
+                    req_b64.add_header('apikey', dict(cfg)['evolution_api_key'])
+                    payload_b64 = json.dumps({"message": data_payload}).encode('utf-8')
+                    with urllib.request.urlopen(req_b64, data=payload_b64, timeout=10) as res_b64:
+                        b64_res = json.loads(res_b64.read().decode('utf-8'))
+                        b64_data = b64_res.get('base64')
+                        if b64_data:
+                            # b64_data is usually "data:image/jpeg;base64,/9j/..."
+                            ext = 'bin'
+                            if 'image/jpeg' in b64_data: ext = 'jpg'
+                            elif 'image/png' in b64_data: ext = 'png'
+                            elif 'image/webp' in b64_data: ext = 'webp'
+                            elif 'audio/ogg' in b64_data or 'audio/mp4' in b64_data or 'audio/' in b64_data: ext = 'ogg'
+                            elif 'video/mp4' in b64_data: ext = 'mp4'
+                            elif 'application/pdf' in b64_data: ext = 'pdf'
+                            
+                            b64_content = b64_data.split(',')[-1] if ',' in b64_data else b64_data
+                            import base64
+                            file_bytes = base64.b64decode(b64_content)
+                            filename = f"whatsapp_{uuid.uuid4().hex[:8]}.{ext}"
+                            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                            with open(filepath, 'wb') as f:
+                                f.write(file_bytes)
+                            text = f"[MEDIA]:/static/uploads/{filename}"
+                except Exception as err:
+                    print("Erro ao baixar base64 da evolution:", err)
+                    if not text: text = f"[Mídia Recebida: {messageType}]"
         
         if not remote_jid or not text:
             return jsonify({'status': 'ignorado'}), 200
