@@ -1291,7 +1291,7 @@ async function loadAdminPedidos() {
         <td>
           <div style="display: flex; gap: 5px; flex-wrap: wrap;">
             <button class="btn btn-secondary btn-sm" onclick="imprimirOS(${p.id})" title="Imprimir Ordem de Serviço"><i class="fa-solid fa-print"></i></button>
-            <button onclick="abrirChatWidget('${p.codigo_pedido}', '${p.cliente_telefone}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Chat Interno">
+            <button onclick="abrirChatWidget('${p.codigo_pedido}', '${p.cliente_telefone}', '${p.cliente_nome}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Chat Interno">
               <i class="fa-solid fa-comments"></i>
             </button>
           </div>
@@ -1456,7 +1456,7 @@ async function loadAdminOrcamentos() {
         <td style="font-weight: 800; color: var(--primary);">R$ ${o.valor_estimado.toFixed(2).replace('.', ',')}</td>
         <td><span class="badge ${o.status === 'Aprovado' ? 'badge-success' : o.status === 'Rejeitado' ? 'badge-danger' : o.status === 'Concluído' ? 'badge-info' : 'badge-warning'}">${o.status}</span></td>
         <td style="display: flex; gap: 5px; flex-wrap: wrap;">
-          <button onclick="abrirChatWidget('${o.codigo_orcamento}', '${o.cliente_telefone}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Chat Interno">
+          <button onclick="abrirChatWidget('${o.codigo_orcamento}', '${o.cliente_telefone}', '${o.cliente_nome}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Chat Interno">
             <i class="fa-solid fa-comments"></i>
           </button>
           <button class="btn btn-primary btn-sm" onclick="abrirModalEditarOrcamento(${o.id})" title="Editar">
@@ -1975,11 +1975,19 @@ let chatWidgetRef = null;
 let chatWidgetTel = null;
 let chatWidgetInterval = null;
 
-function abrirChatWidget(codigo, telefone = null) {
+function abrirChatWidget(codigo, telefone = null, clienteNome = null) {
   chatWidgetRef = codigo;
   chatWidgetTel = telefone;
   
+  const isAdminView = document.getElementById('admin-view').style.display !== 'none';
+  
   document.getElementById("chat-widget-codigo").innerText = codigo;
+  if (isAdminView) {
+      document.getElementById("chat-widget-title").innerText = clienteNome || telefone || "Cliente";
+  } else {
+      document.getElementById("chat-widget-title").innerText = "Atendimento";
+  }
+  
   document.getElementById("chat-widget").style.display = "flex";
   
   carregarMensagensChat();
@@ -1998,8 +2006,13 @@ async function carregarMensagensChat() {
   if (!chatWidgetRef) return;
   
   const headers = {};
-  if (state.adminToken) headers["X-Admin-Token"] = state.adminToken;
-  if (state.clientToken) headers["X-Client-Token"] = state.clientToken;
+  const isAdminView = document.getElementById('admin-view').style.display !== 'none';
+  
+  if (isAdminView && state.adminToken) {
+    headers["X-Admin-Token"] = state.adminToken;
+  } else if (!isAdminView && state.clientToken) {
+    headers["X-Client-Token"] = state.clientToken;
+  }
   
   try {
     const res = await fetch(`/api/chat/${encodeURIComponent(chatWidgetRef)}`, { headers });
@@ -2012,12 +2025,11 @@ async function carregarMensagensChat() {
       return;
     }
     
-    // Check if user is admin to color bubbles correctly
-    const souAdmin = !!state.adminToken;
+    const souAdmin = isAdminView;
     
     container.innerHTML = mensagens.map(m => {
       const isMe = (souAdmin && m.remetente_tipo === "admin") || (!souAdmin && m.remetente_tipo === "cliente");
-      const alignClass = isMe ? "cliente" : "admin"; // Using classes from CSS
+      const alignClass = isMe ? "cliente" : "admin"; // Using classes from CSS. 'cliente' class floats right (green), 'admin' class floats left (gray).
       const time = new Date(m.data_envio).toLocaleTimeString([], {hour: "2-digit", minute:"2-digit"});
       
       return `
@@ -2043,8 +2055,13 @@ async function enviarMensagemChat() {
   if (!msg || !chatWidgetRef) return;
   
   const headers = { "Content-Type": "application/json" };
-  if (state.adminToken) headers["X-Admin-Token"] = state.adminToken;
-  if (state.clientToken) headers["X-Client-Token"] = state.clientToken;
+  const isAdminView = document.getElementById('admin-view').style.display !== 'none';
+  
+  if (isAdminView && state.adminToken) {
+    headers["X-Admin-Token"] = state.adminToken;
+  } else if (!isAdminView && state.clientToken) {
+    headers["X-Client-Token"] = state.clientToken;
+  }
   
   const body = { mensagem: msg };
   if (chatWidgetTel) body.telefone = chatWidgetTel;
