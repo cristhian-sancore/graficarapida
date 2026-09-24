@@ -1979,7 +1979,7 @@ function abrirChatWidget(codigo, telefone = null, clienteNome = null) {
   chatWidgetRef = codigo;
   chatWidgetTel = telefone;
   
-  const isAdminView = document.getElementById('admin-view').style.display !== 'none';
+  const isAdminView = document.getElementById('view-admin').style.display !== 'none';
   
   document.getElementById("chat-widget-codigo").innerText = codigo;
   if (isAdminView) {
@@ -2006,7 +2006,7 @@ async function carregarMensagensChat() {
   if (!chatWidgetRef) return;
   
   const headers = {};
-  const isAdminView = document.getElementById('admin-view').style.display !== 'none';
+  const isAdminView = document.getElementById('view-admin').style.display !== 'none';
   
   if (isAdminView && state.adminToken) {
     headers["X-Admin-Token"] = state.adminToken;
@@ -2055,7 +2055,7 @@ async function enviarMensagemChat() {
   if (!msg || !chatWidgetRef) return;
   
   const headers = { "Content-Type": "application/json" };
-  const isAdminView = document.getElementById('admin-view').style.display !== 'none';
+  const isAdminView = document.getElementById('view-admin').style.display !== 'none';
   
   if (isAdminView && state.adminToken) {
     headers["X-Admin-Token"] = state.adminToken;
