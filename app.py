@@ -1254,6 +1254,18 @@ def get_pedido_by_codigo(codigo):
     conn.close()
     return jsonify(ped)
 
+@app.route('/api/pedidos/<int:pedido_id>', methods=['DELETE'])
+def delete_pedido(pedido_id):
+    token = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token): return jsonify({'error': 'Acesso restrito.'}), 403
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM itens_pedido WHERE pedido_id = ?', (pedido_id,))
+    cursor.execute('DELETE FROM pedidos WHERE id = ?', (pedido_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Pedido excluído!'})
+
 @app.route('/api/pedidos/<int:pedido_id>/status', methods=['PUT'])
 def update_pedido_status(pedido_id):
     token = request.headers.get('X-Admin-Token')
@@ -1328,12 +1340,24 @@ def api_estoque():
 
     elif request.method == 'PUT':
         data = request.json
-        cursor.execute('''
-            UPDATE estoque_insumos SET quantidade_atual = ?, quantidade_minima = ? WHERE id = ?
-        ''', (float(data.get('quantidade_atual')), float(data.get('quantidade_minima')), data.get('id')))
+        if data.get('nome_insumo'):
+            cursor.execute('''
+                UPDATE estoque_insumos SET nome_insumo = ?, categoria = ?, quantidade_atual = ?, quantidade_minima = ?, unidade_medida = ? WHERE id = ?
+            ''', (data.get('nome_insumo'), data.get('categoria'), float(data.get('quantidade_atual')), float(data.get('quantidade_minima')), data.get('unidade_medida'), data.get('id')))
+        else:
+            cursor.execute('''
+                UPDATE estoque_insumos SET quantidade_atual = ?, quantidade_minima = ? WHERE id = ?
+            ''', (float(data.get('quantidade_atual')), float(data.get('quantidade_minima')), data.get('id')))
         conn.commit()
         conn.close()
         return jsonify({'message': 'Estoque atualizado!'})
+
+    elif request.method == 'DELETE':
+        data = request.json
+        cursor.execute('DELETE FROM estoque_insumos WHERE id = ?', (data.get('id'),))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'Insumo removido!'})
 
 @app.route('/api/orcamentos', methods=['GET', 'POST', 'PUT'])
 def api_orcamentos():

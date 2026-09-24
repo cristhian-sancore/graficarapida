@@ -1366,6 +1366,7 @@ async function loadAdminPedidos() {
           <div style="display: flex; gap: 5px; flex-wrap: wrap;">
             <button class="btn btn-secondary btn-sm" onclick="verArquivosPedido(${p.id})" title="Ver Arquivos da Arte"><i class="fa-solid fa-folder-open"></i></button>
             <button class="btn btn-secondary btn-sm" onclick="imprimirOS(${p.id})" title="Imprimir Ordem de Serviço"><i class="fa-solid fa-print"></i></button>
+            <button class="btn btn-danger btn-sm" onclick="excluirPedidoAdmin(${p.id})" title="Excluir Pedido"><i class="fa-solid fa-trash"></i></button>
             <button onclick="abrirChatWidget('${p.codigo_pedido}', '${p.cliente_telefone}', '${p.cliente_nome}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Chat Interno">
               <i class="fa-solid fa-comments"></i>
             </button>
@@ -1494,7 +1495,9 @@ async function loadAdminEstoque() {
           </span>
         </td>
         <td>
-          <button class="btn btn-secondary btn-sm" onclick="ajustarEstoqueInsumo(${i.id}, ${i.quantidade_atual})">Ajustar Qtd</button>
+          <button class="btn btn-secondary btn-sm" onclick="ajustarEstoqueInsumo(${i.id}, ${i.quantidade_atual})" title="Ajustar Quantidade"><i class="fa-solid fa-boxes-stacked"></i></button>
+          <button class="btn btn-primary btn-sm" onclick="editarInsumoAdmin(${i.id})" title="Editar Insumo"><i class="fa-solid fa-pen"></i></button>
+          <button class="btn btn-danger btn-sm" onclick="excluirInsumoAdmin(${i.id})" title="Excluir Insumo"><i class="fa-solid fa-trash"></i></button>
         </td>
       </tr>
     `).join('');
@@ -1509,6 +1512,8 @@ function openInsumoModal() {
 
 async function salvarInsumoAdmin(e) {
   e.preventDefault();
+  const form = document.getElementById('form-admin-insumo');
+  const id = form.dataset.id;
   const payload = {
     nome_insumo: document.getElementById('insumo-nome').value,
     categoria: document.getElementById('insumo-categoria').value,
@@ -1516,10 +1521,11 @@ async function salvarInsumoAdmin(e) {
     quantidade_minima: parseFloat(document.getElementById('insumo-qtd-min').value),
     unidade_medida: document.getElementById('insumo-unidade').value
   };
+  if (id) payload.id = id;
 
   try {
     const res = await fetch('/api/estoque', {
-      method: 'POST',
+      method: id ? 'PUT' : 'POST',
       headers: { 
         'Content-Type': 'application/json',
         'X-Admin-Token': state.adminToken 
@@ -1889,6 +1895,9 @@ async function loadAdminCaixa() {
         <td>${m.forma_pagamento}</td>
         <td style="font-weight: 800; color: ${m.tipo === 'ENTRADA' ? 'var(--success)' : 'var(--danger)'};">
           ${m.tipo === 'ENTRADA' ? '+' : '-'} R$ ${m.valor.toFixed(2).replace('.', ',')}
+        </td>
+        <td>
+          <button class="btn btn-danger btn-sm" onclick="excluirMovimentoCaixa(${m.id})" title="Excluir"><i class="fa-solid fa-trash"></i></button>
         </td>
       </tr>
     `).join('');
