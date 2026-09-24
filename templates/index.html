@@ -457,6 +457,14 @@
                 <strong id="inbox-title">Selecione uma conversa</strong>
                 <br><small id="inbox-subtitle" style="color: var(--text-muted);"></small>
               </div>
+              <div id="inbox-actions" style="display: none; gap: 10px;">
+                <button class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;" onclick="salvarContatoInbox()" title="Salvar Contato">
+                  <i class="fa-solid fa-user-plus"></i> Salvar
+                </button>
+                <button class="btn btn-danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="apagarConversaInbox()" title="Apagar Conversa">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
             </div>
             <div id="inbox-messages" style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px;">
               <!-- Mensagens aqui -->
@@ -1403,6 +1411,6 @@
   </div>
 
   <!-- JavaScript Main App -->
-  <script src="/static/js/app.js?v=2.95"></script>
+  <script src="/static/js/app.js?v=2.96"></script>
 </body>
 </html>

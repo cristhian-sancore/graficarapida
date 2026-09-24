@@ -2205,6 +2205,7 @@ async function abrirInboxChat(codigo, telefone) {
   document.getElementById("inbox-title").innerText = codigo === "GERAL" ? "Atendimento Avulso" : "Atendimento: " + codigo;
   document.getElementById("inbox-subtitle").innerText = "WhatsApp: " + telefone;
   document.getElementById("inbox-input-area").style.display = "flex";
+  document.getElementById("inbox-actions").style.display = "flex";
   
   // Mark as read
   await fetch(`/api/chat/${encodeURIComponent(codigo)}/read`, {
@@ -2219,6 +2220,50 @@ async function abrirInboxChat(codigo, telefone) {
   
   if (inboxInterval) clearInterval(inboxInterval);
   inboxInterval = setInterval(carregarMensagensInbox, 5000);
+}
+
+async function salvarContatoInbox() {
+  if (!currentInboxTel || !state.adminToken) return;
+  const nome = prompt("Digite o nome para salvar o contato:", "");
+  if (!nome) return;
+  
+  try {
+    const res = await fetch("/api/chat/save_contact", {
+      method: "POST",
+      headers: { "X-Admin-Token": state.adminToken, "Content-Type": "application/json" },
+      body: JSON.stringify({ telefone: currentInboxTel, nome: nome })
+    });
+    const data = await res.json();
+    if (data.status === "sucesso") {
+      alert(`Cliente salvo com sucesso! A senha gerada é: ${data.senha}`);
+    } else {
+      alert(data.message || "Erro ao salvar contato.");
+    }
+  } catch(e) {
+    alert("Erro de conexão.");
+  }
+}
+
+async function apagarConversaInbox() {
+  if (!currentInboxChat || !currentInboxTel || !state.adminToken) return;
+  if (!confirm("Tem certeza que deseja apagar essa conversa inteira?")) return;
+  
+  try {
+    const res = await fetch(`/api/chat/${encodeURIComponent(currentInboxChat)}?telefone=${encodeURIComponent(currentInboxTel)}`, {
+      method: "DELETE",
+      headers: { "X-Admin-Token": state.adminToken }
+    });
+    if (res.ok) {
+      currentInboxChat = null;
+      currentInboxTel = null;
+      document.getElementById("inbox-title").innerText = "Selecione uma conversa";
+      document.getElementById("inbox-subtitle").innerText = "";
+      document.getElementById("inbox-input-area").style.display = "none";
+      document.getElementById("inbox-actions").style.display = "none";
+      document.getElementById("inbox-messages").innerHTML = "";
+      loadWhatsAppInbox();
+    }
+  } catch(e) {}
 }
 
 async function carregarMensagensInbox() {

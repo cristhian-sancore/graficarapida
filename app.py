@@ -1933,6 +1933,68 @@ def api_chat_unread_cliente():
     conn.close()
     return jsonify({"unread": count})
 
+@app.route("/api/chat/<path:codigo>", methods=["DELETE"])
+def api_chat_delete(codigo):
+    token_admin = request.headers.get("X-Admin-Token")
+    if not get_current_admin(token_admin):
+        return jsonify({"error": "Acesso restrito ao administrador."}), 403
+        
+    telefone = request.args.get("telefone", "")
+    if not telefone:
+        return jsonify({"error": "Telefone obrigatório"}), 400
+        
+    conn = get_db()
+    cursor = conn.cursor()
+    if cursor.is_postgres:
+        cursor.execute("DELETE FROM mensagens_chat WHERE referencia_codigo = %s AND telefone_cliente = %s", (codigo, telefone))
+    else:
+        cursor.execute("DELETE FROM mensagens_chat WHERE referencia_codigo = ? AND telefone_cliente = ?", (codigo, telefone))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "apagado"})
+
+@app.route("/api/chat/save_contact", methods=["POST"])
+def api_chat_save_contact():
+    token_admin = request.headers.get("X-Admin-Token")
+    if not get_current_admin(token_admin):
+        return jsonify({"error": "Acesso restrito ao administrador."}), 403
+        
+    data = request.json
+    telefone = data.get("telefone")
+    nome = data.get("nome", "Cliente")
+    
+    if not telefone:
+        return jsonify({"error": "Telefone obrigatório"}), 400
+        
+    conn = get_db()
+    cursor = conn.cursor()
+    # Check if client exists by phone
+    if cursor.is_postgres:
+        cursor.execute("SELECT id FROM clientes WHERE telefone = %s", (telefone,))
+    else:
+        cursor.execute("SELECT id FROM clientes WHERE telefone = ?", (telefone,))
+    
+    row = cursor.fetchone()
+    if row:
+        conn.close()
+        return jsonify({"status": "existe", "message": "Cliente já existe."})
+        
+    # Generate new password
+    import random
+    import string
+    import bcrypt
+    senha = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+    senha_hash = bcrypt.hashpw(senha.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    
+    if cursor.is_postgres:
+        cursor.execute("INSERT INTO clientes (nome, email, telefone, senha_hash, is_admin) VALUES (%s, %s, %s, %s, 0)", (nome, f"{telefone}@wa.me", telefone, senha_hash))
+    else:
+        cursor.execute("INSERT INTO clientes (nome, email, telefone, senha_hash, is_admin) VALUES (?, ?, ?, ?, 0)", (nome, f"{telefone}@wa.me", telefone, senha_hash))
+    
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "sucesso", "senha": senha, "message": f"Cliente salvo com sucesso!"})
+
 @app.route("/api/chat/<path:codigo>/read", methods=["POST"])
 def api_chat_read(codigo):
     token_admin = request.headers.get("X-Admin-Token")
