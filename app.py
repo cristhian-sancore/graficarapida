@@ -1845,7 +1845,11 @@ def webhook_evolution():
     # estamos usando um genérico que tenta encontrar o remoteJid e text.
     try:
         data = request.json
-        if not data:
+        if not data or not isinstance(data, dict):
+            return jsonify({'status': 'ignorado'}), 200
+            
+        event = data.get('event')
+        if event and event != 'messages.upsert':
             return jsonify({'status': 'ignorado'}), 200
             
         data_payload = data.get('data', {})
@@ -1907,7 +1911,11 @@ def webhook_evolution():
                             text = f"[MEDIA]:/static/uploads/{filename}"
                 except Exception as err:
                     print("Erro ao baixar base64 da evolution:", err)
-                    if not text: text = f"[Mídia Recebida: {messageType}]"
+            
+            # Garante que text não seja None se for mídia
+            if not text: 
+                text = f"[Mídia Recebida: {messageType}]"
+
         
         if not remote_jid or not text:
             return jsonify({'status': 'ignorado'}), 200
