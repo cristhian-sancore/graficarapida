@@ -1065,3 +1065,8 @@ button, input, select, textarea {
   }
 }
 
+
+
+.swal2-container {
+  z-index: 9999 !important;
+}
