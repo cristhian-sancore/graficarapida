@@ -684,95 +684,104 @@
 
         <div class="table-wrap" style="padding: 28px; max-width: 700px;">
           <form id="form-config" onsubmit="salvarConfiguracoes(event)">
-            <div class="form-group">
-              <label class="form-label">Nome da Gráfica</label>
-              <input type="text" class="form-control" id="cfg-nome-grafica" required>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">WhatsApp (com DDD ex: 5511999998888)</label>
-              <input type="text" class="form-control" id="cfg-whatsapp" required>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Chave PIX (E-mail, CNPJ ou Celular)</label>
-              <input type="text" class="form-control" id="cfg-chave-pix" required>
-            </div>
             
-            <div class="form-group" style="background: var(--bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
-              <label class="form-label">URL do Webhook (Evolution API)</label>
-              <div style="display: flex; gap: 10px;">
-                <input type="text" class="form-control" id="cfg-webhook-url" readonly>
-                <button type="button" class="btn btn-secondary" onclick="copiarWebhook()">
-                  <i class="fa-solid fa-copy"></i> Copiar
-                </button>
-              </div>
-              <small style="color: var(--text-muted); display: block; margin-top: 5px;">Cole esta URL nas configurações da sua instância no Evolution API.</small>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Título do Banner Principal</label>
-              <input type="text" class="form-control" id="cfg-banner-titulo" required>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Subtítulo do Banner</label>
-              <textarea class="form-control" id="cfg-banner-subtitulo" rows="2" required></textarea>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Aviso do Topo</label>
-              <input type="text" class="form-control" id="cfg-aviso-topo" required>
-            </div>
-
-            <div style="display: flex; gap: 14px;">
-              <div class="form-group" style="flex: 1;">
-                <label class="form-label">Desconto PIX (%)</label>
-                <input type="number" step="0.1" class="form-control" id="cfg-desconto-pix" required>
-              </div>
-
-              <div class="form-group" style="flex: 1;">
-                <label class="form-label">Taxa de Entrega Padrão (R$)</label>
-                <input type="number" step="0.1" class="form-control" id="cfg-taxa-entrega" required>
-              </div>
-            </div>
-
-            <!-- EVOLUTION API INTEGRATION (WHATSAPP OTP) -->
-            <div style="margin-top: 28px; padding-top: 20px; border-top: 2px dashed var(--border-color);">
-              <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--cyan); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
-                <i class="fa-brands fa-whatsapp" style="color: #25d366; font-size: 1.4rem;"></i> Configurações Evolution API (WhatsApp Verification)
+            <!-- SEÇÃO 1: DADOS DO NEGÓCIO -->
+            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+              <h4 style="font-size: 1.1rem; font-weight: 800; color: #fff; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                <i class="fa-solid fa-building" style="color: var(--primary); margin-right: 8px;"></i> Dados da Gráfica
               </h4>
+              <div class="form-group">
+                <label class="form-label">Nome da Gráfica</label>
+                <input type="text" class="form-control" id="cfg-nome-grafica" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">WhatsApp (com DDD ex: 5511999998888)</label>
+                <input type="text" class="form-control" id="cfg-whatsapp" required>
+              </div>
+            </div>
 
+            <!-- SEÇÃO 2: FINANCEIRO E REGRAS -->
+            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+              <h4 style="font-size: 1.1rem; font-weight: 800; color: #fff; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                <i class="fa-solid fa-money-bill-wave" style="color: #2ecc71; margin-right: 8px;"></i> Financeiro & Regras
+              </h4>
+              <div class="form-group">
+                <label class="form-label">Chave PIX (E-mail, CNPJ ou Celular)</label>
+                <input type="text" class="form-control" id="cfg-chave-pix" required>
+              </div>
+              <div style="display: flex; gap: 14px;">
+                <div class="form-group" style="flex: 1;">
+                  <label class="form-label">Desconto PIX (%)</label>
+                  <input type="number" step="0.1" class="form-control" id="cfg-desconto-pix" required>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                  <label class="form-label">Taxa de Entrega Padrão (R$)</label>
+                  <input type="number" step="0.1" class="form-control" id="cfg-taxa-entrega" required>
+                </div>
+              </div>
+            </div>
+
+            <!-- SEÇÃO 3: APARÊNCIA E VITRINE -->
+            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+              <h4 style="font-size: 1.1rem; font-weight: 800; color: #fff; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                <i class="fa-solid fa-palette" style="color: #9b59b6; margin-right: 8px;"></i> Vitrine do Cliente
+              </h4>
+              <div class="form-group">
+                <label class="form-label">Aviso do Topo (Barra rotativa)</label>
+                <input type="text" class="form-control" id="cfg-aviso-topo" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Título do Banner Principal</label>
+                <input type="text" class="form-control" id="cfg-banner-titulo" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Subtítulo do Banner</label>
+                <textarea class="form-control" id="cfg-banner-subtitulo" rows="2" required></textarea>
+              </div>
+            </div>
+
+            <!-- SEÇÃO 4: EVOLUTION API -->
+            <div style="background: rgba(37, 211, 102, 0.05); border: 1px solid rgba(37, 211, 102, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+              <h4 style="font-size: 1.1rem; font-weight: 800; color: #25d366; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid rgba(37, 211, 102, 0.2); padding-bottom: 10px;">
+                <i class="fa-brands fa-whatsapp" style="margin-right: 8px;"></i> Automação WhatsApp (Evolution API)
+              </h4>
               <div class="form-group">
                 <label class="form-label">URL da Evolution API *</label>
                 <input type="url" class="form-control" id="cfg-evolution-url" placeholder="https://api.evolution.suadominio.com">
               </div>
-
               <div class="form-group">
                 <label class="form-label">API Key / Token Global *</label>
                 <input type="password" class="form-control" id="cfg-evolution-key" placeholder="Sua Chave Secreta apikey">
               </div>
-
               <div class="form-group">
                 <label class="form-label">Nome da Instância Conectada *</label>
                 <input type="text" class="form-control" id="cfg-evolution-instance" placeholder="ex: GraficaExpress">
               </div>
-
               <div class="form-group">
                 <label class="form-label">Validar WhatsApp dos Clientes no Cadastro?</label>
                 <select class="form-control" id="cfg-evolution-active">
-                  <option value="1">✅ Sim (Enviar código OTP de 6 dígitos via WhatsApp)</option>
+                  <option value="1">✅ Sim (Enviar código OTP via WhatsApp)</option>
                   <option value="0">❌ Não (Cadastrar direto sem validação)</option>
                 </select>
               </div>
+              
+              <div class="form-group" style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
+                <label class="form-label" style="color: #aaa;">URL do Webhook (Para configurar lá no painel da Evolution)</label>
+                <div style="display: flex; gap: 10px;">
+                  <input type="text" class="form-control" id="cfg-webhook-url" readonly style="background: rgba(255,255,255,0.05);">
+                  <button type="button" class="btn btn-secondary" onclick="copiarWebhook()">
+                    <i class="fa-solid fa-copy"></i> Copiar
+                  </button>
+                </div>
+              </div>
 
-              <button type="button" class="btn btn-secondary" onclick="testarEvolutionAPI()" style="width: 100%; margin-bottom: 10px;">
-                <i class="fa-solid fa-plug-circle-check"></i> Testar Conexão WhatsApp Evolution API
+              <button type="button" class="btn btn-secondary" onclick="testarEvolutionAPI()" style="width: 100%; border-color: #25d366; color: #25d366; background: transparent;">
+                <i class="fa-solid fa-plug-circle-check"></i> Testar Conexão Evolution API
               </button>
             </div>
 
-            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
-              <i class="fa-solid fa-floppy-disk"></i> Salvar Alterações
+            <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1.1rem; padding: 12px; border-radius: 10px;">
+              <i class="fa-solid fa-floppy-disk"></i> Salvar Todas Configurações
             </button>
           </form>
         </div>
