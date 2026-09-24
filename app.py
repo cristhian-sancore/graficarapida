@@ -1949,7 +1949,7 @@ def webhook_evolution():
             # Tentar achar o status do pedido/orçamento
             prefix = codigo.split('-')[0]
             status_msg = ""
-            if prefix == "#PED":
+            if prefix == "#GF":
                 cursor.execute('SELECT status_producao, total FROM pedidos WHERE codigo_pedido = ?', (codigo,))
                 row = cursor.fetchone()
                 if row:
@@ -1996,7 +1996,7 @@ def webhook_evolution():
                         pass
             
             if enviar_saudacao:
-                fallback_msg = "🤖 *Assistente Automático*\nOlá! Recebemos sua mensagem. Se deseja saber sobre um pedido, digite o código (ex: #PED-123).\n\nCaso contrário, aguarde um instante que um atendente humano já falará com você!"
+                fallback_msg = "🤖 *Assistente Automático*\nOlá! Recebemos sua mensagem. Se deseja saber sobre um pedido, digite o código (ex: #GF-09247D22).\n\nCaso contrário, aguarde um instante que um atendente humano já falará com você!"
                 send_evolution_whatsapp(telefone, fallback_msg)
                 cursor.execute("INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem) VALUES (?, 'admin', 'Assistente Virtual', ?, ?)", (codigo, telefone, fallback_msg))
                 conn.commit()
