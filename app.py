@@ -1998,17 +1998,19 @@ def webhook_evolution():
             
             if diff > 1800:
                 # Passou muito tempo. Enviar menu inicial
-                bot_reply = "🤖 *Assistente Automático*\nOlá! Como podemos ajudar?\nDigite o NÚMERO da opção:\n1️⃣ - Fazer um pedido/orçamento\n2️⃣ - Falar com atendente\n\n_(Ou se quiser rastrear, digite seu código. ex: #GF-123)_"
+                bot_reply = "🤖 *Assistente Automático - Gráfica Rápida Express*\nOlá! Seja bem-vindo(a)! Como posso ajudar você hoje?\n\nDigite o *NÚMERO* da opção desejada:\n1️⃣ - Abrir um novo Pedido/Orçamento\n2️⃣ - Verificar o status do meu pedido\n3️⃣ - Falar com atendente humano"
             elif remetente == 'Assistente Virtual':
                 # Bot estava falando, processar estado
                 user_text = text.strip()
-                if "Digite o NÚMERO da opção" in last_msg:
+                if "Digite o *NÚMERO* da opção" in last_msg:
                     if user_text == '1':
                         bot_reply = "🤖 Certo! Para começarmos, qual o seu nome completo?"
                     elif user_text == '2':
-                        bot_reply = "🤖 Aguarde um instante que um atendente humano já falará com você!"
+                        bot_reply = "🤖 Certo! Para verificar o status, basta digitar o código do seu pedido com a hashtag na frente (ex: #GF-1234 ou #ORC-1234)."
+                    elif user_text == '3':
+                        bot_reply = "🤖 Ok! Transferindo para um atendente. Por favor, aguarde um instante!"
                     else:
-                        bot_reply = "🤖 Opção inválida. Digite 1 ou 2."
+                        bot_reply = "🤖 Opção inválida. Digite 1, 2 ou 3."
                 
                 elif "qual o seu nome completo?" in last_msg:
                     bot_reply = f"🤖 Prazer! Descreva o que você precisa fazer (ex: 1000 cartões de visita frente e verso):"
