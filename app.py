@@ -1984,10 +1984,13 @@ def webhook_evolution():
                 if dt_str:
                     try:
                         if isinstance(dt_str, str):
-                            last_time = datetime.strptime(dt_str.split('.')[0], "%Y-%m-%d %H:%M:%S")
+                            last_time = datetime.strptime(dt_str.split('.')[0].split('+')[0], "%Y-%m-%d %H:%M:%S")
                         else:
-                            last_time = dt_str # it's already a datetime object in psycopg2
-                        if (datetime.now() - last_time).total_seconds() < 1800: # 30 min
+                            last_time = dt_str.replace(tzinfo=None)
+                        
+                        # Use utcnow to compare with database CURRENT_TIMESTAMP (which is UTC)
+                        diff = (datetime.utcnow() - last_time).total_seconds()
+                        if 0 <= diff < 1800: # 30 min
                             enviar_saudacao = False
                     except:
                         pass
@@ -2016,16 +2019,16 @@ def api_chat_inbox():
     cursor = conn.cursor()
     if cursor.is_postgres:
         cursor.execute("""
-            SELECT DISTINCT ON (referencia_codigo, telefone_cliente) 
+            SELECT DISTINCT ON (telefone_cliente) 
                 referencia_codigo, telefone_cliente, remetente_nome, mensagem, data_envio, lida, remetente_tipo
             FROM mensagens_chat 
-            ORDER BY referencia_codigo, telefone_cliente, id DESC
+            ORDER BY telefone_cliente, id DESC
         """)
     else:
         cursor.execute("""
             SELECT referencia_codigo, telefone_cliente, remetente_nome, mensagem, data_envio, lida, remetente_tipo
             FROM mensagens_chat 
-            GROUP BY referencia_codigo, telefone_cliente
+            GROUP BY telefone_cliente
             ORDER BY max(id) DESC
         """)
     

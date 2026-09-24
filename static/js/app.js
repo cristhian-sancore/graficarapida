@@ -2327,7 +2327,7 @@ async function loadWhatsAppInbox() {
     
     list.innerHTML = conversas.map(c => {
       const time = new Date(c.data_envio).toLocaleTimeString([], {hour: "2-digit", minute:"2-digit"});
-      const bg = (currentInboxChat === c.referencia_codigo && currentInboxTel === c.telefone_cliente) ? "rgba(255,255,255,0.1)" : "transparent";
+      const bg = (currentInboxTel === c.telefone_cliente) ? "rgba(255,255,255,0.1)" : "transparent";
       const unreadBadge = c.nao_lidas > 0 ? `<span class="badge badge-danger" style="border-radius: 50%; padding: 2px 6px; font-size: 0.7rem;">${c.nao_lidas}</span>` : "";
       
       const displayName = c.remetente_nome || c.telefone_cliente;
@@ -2335,7 +2335,7 @@ async function loadWhatsAppInbox() {
       const iniciais = displayName.substring(0, 2).toUpperCase();
       
       return `
-        <div style="padding: 15px; border-bottom: 1px solid var(--border); cursor: pointer; background: ${bg}; display: flex; gap: 12px; align-items: center;" onclick="abrirInboxChat('${c.referencia_codigo}', '${c.telefone_cliente}')">
+        <div style="padding: 15px; border-bottom: 1px solid var(--border); cursor: pointer; background: ${bg}; display: flex; gap: 12px; align-items: center;" onclick="abrirInboxChat('${c.telefone_cliente}', '${c.remetente_nome}')">
           <div style="width: 42px; height: 42px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; color: #fff; flex-shrink: 0;">
             ${iniciais}
           </div>
@@ -2365,11 +2365,10 @@ function abrirConversaInterna(codigo, telefone) {
   abrirInboxChat(codigo, telefone);
 }
 
-async function abrirInboxChat(codigo, telefone) {
-  currentInboxChat = codigo;
+async function abrirInboxChat(telefone, nome) {
   currentInboxTel = telefone;
   
-  document.getElementById("inbox-title").innerText = codigo === "GERAL" ? "Atendimento Avulso" : "Atendimento: " + codigo;
+  document.getElementById("inbox-title").innerText = nome || "Cliente";
   document.getElementById("inbox-subtitle").innerText = "WhatsApp: " + telefone;
   document.getElementById("inbox-input-area").style.display = "flex";
   document.getElementById("inbox-actions").style.display = "flex";
