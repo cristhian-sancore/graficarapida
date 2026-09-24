@@ -1868,8 +1868,8 @@ def webhook_evolution():
         # 1. Salva a mensagem recebida
         cursor.execute('''
             INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem)
-            VALUES (?, 'cliente', push_name, ?, ?)
-        ''', (codigo, telefone, text))
+            VALUES (?, 'cliente', ?, ?, ?)
+        ''', (codigo, push_name, telefone, text))
         conn.commit()
 
         # 2. Automação do Bot
