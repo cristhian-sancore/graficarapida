@@ -1754,11 +1754,18 @@ def webhook_evolution():
         if not data:
             return jsonify({'status': 'ignorado'}), 200
             
-        messages = data.get('data', {}).get('message', {})
+        data_payload = data.get('data', {})
+        if isinstance(data_payload, list):
+            if len(data_payload) > 0:
+                data_payload = data_payload[0]
+            else:
+                return jsonify({'status': 'ignorado'}), 200
+                
+        messages = data_payload.get('message', {})
         if not messages:
             return jsonify({'status': 'ignorado'}), 200
             
-        remote_jid = data.get('data', {}).get('key', {}).get('remoteJid', '')
+        remote_jid = data_payload.get('key', {}).get('remoteJid', '')
         text = messages.get('conversation') or messages.get('extendedTextMessage', {}).get('text')
         
         if not remote_jid or not text:
