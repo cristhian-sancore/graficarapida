@@ -2522,3 +2522,37 @@ function handleChatEnter(e) {
   if (e.key === "Enter") enviarMensagemChat();
 }
 
+
+async function excluirMovimentoCaixa(id) {
+  if (!(await window.confirmAsync('Deseja realmente excluir esta movimentao?'))) return;
+  try {
+    const res = await fetch(/api/caixa/movimento/${id}, {
+      method: 'DELETE',
+      headers: { 'X-Admin-Token': state.adminToken }
+    });
+    if (res.ok) {
+      loadAdminCaixa();
+    }
+  } catch (err) {
+    console.error('Erro ao excluir caixa:', err);
+  }
+}
+
+async function editarInsumoAdmin(id) {
+  try {
+    const res = await fetch('/api/estoque', { headers: { 'X-Admin-Token': state.adminToken } });
+    const insumos = await res.json();
+    const ins = insumos.find(i => i.id === id);
+    if (!ins) return;
+    const form = document.getElementById('form-admin-insumo');
+    form.dataset.id = ins.id;
+    document.getElementById('insumo-nome').value = ins.nome_insumo;
+    document.getElementById('insumo-categoria').value = ins.categoria;
+    document.getElementById('insumo-qtd').value = ins.quantidade_atual;
+    document.getElementById('insumo-qtd-min').value = ins.quantidade_minima;
+    document.getElementById('insumo-unidade').value = ins.unidade_medida;
+    openModal('modal-admin-insumo');
+  } catch (err) {
+    console.error('Erro ao editar insumo:', err);
+  }
+}

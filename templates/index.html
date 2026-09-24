@@ -470,8 +470,10 @@
               <!-- Mensagens aqui -->
             </div>
             <div id="inbox-input-area" style="padding: 15px; background: var(--surface); border-top: 1px solid var(--border); display: none; gap: 10px; align-items: center;">
-              <input type="file" id="inbox-file-input" style="display: none;">
+              <input type="file" id="inbox-file-input" style="display: none;" onchange="document.getElementById('inbox-file-name').innerText = this.files.length > 0 ? this.files[0].name : '';">
               <button class="btn btn-secondary" onclick="document.getElementById('inbox-file-input').click()" title="Anexar Arquivo"><i class="fa-solid fa-paperclip"></i></button>
+              <button class="btn btn-secondary" onclick="document.getElementById('inbox-input').value += '😀'" title="Inserir Emoticon"><i class="fa-regular fa-face-smile"></i></button>
+              <div id="inbox-file-name" style="font-size: 0.8rem; color: var(--primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;"></div>
               <input type="text" id="inbox-input" class="form-control" placeholder="Digite uma mensagem..." style="flex: 1;" onkeypress="if(event.key==='Enter') enviarMensagemInbox()">
               <button class="btn btn-primary" onclick="enviarMensagemInbox()">
                 <i class="fa-solid fa-paper-plane"></i>

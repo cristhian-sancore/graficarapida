@@ -1567,6 +1567,19 @@ def add_caixa_movimento():
     conn.close()
     return jsonify({'message': 'Movimentação registrada!'})
 
+@app.route('/api/caixa/movimento/<int:mov_id>', methods=['DELETE'])
+def delete_caixa_movimento(mov_id):
+    token = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token):
+        return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM caixa_movimentacoes WHERE id = ?', (mov_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Movimentação excluída com sucesso!'})
+
 @app.route('/api/clientes/<int:cliente_id>', methods=['PUT'])
 def edit_cliente(cliente_id):
     token = request.headers.get('X-Admin-Token')
