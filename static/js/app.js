@@ -1299,9 +1299,9 @@ async function loadAdminPedidos() {
             <button onclick="abrirChatWidget('${p.codigo_pedido}', '${p.cliente_telefone}', '${p.cliente_nome}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Chat Interno">
               <i class="fa-solid fa-comments"></i>
             </button>
-            <a href="https://wa.me/${p.cliente_telefone}?text=${encodeURIComponent('Olá ' + p.cliente_nome + ', tudo bem? Sobre o seu pedido ' + p.codigo_pedido + '...')}" target="_blank" class="btn btn-secondary btn-sm" style="color: #25d366;" title="WhatsApp Externo">
+            <button onclick="abrirConversaInterna('${p.codigo_pedido}', '${p.cliente_telefone}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="WhatsApp Interno">
               <i class="fa-brands fa-whatsapp"></i>
-            </a>
+            </button>
           </div>
         </td>
       </tr>
@@ -1467,9 +1467,9 @@ async function loadAdminOrcamentos() {
           <button onclick="abrirChatWidget('${o.codigo_orcamento}', '${o.cliente_telefone}', '${o.cliente_nome}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Chat Interno">
             <i class="fa-solid fa-comments"></i>
           </button>
-          <a href="https://wa.me/${o.cliente_telefone}?text=${encodeURIComponent('Olá ' + o.cliente_nome + ', tudo bem? Sobre o seu orçamento ' + o.codigo_orcamento + '...')}" target="_blank" class="btn btn-secondary btn-sm" style="color: #25d366;" title="WhatsApp Externo">
+          <button onclick="abrirConversaInterna('${o.codigo_orcamento}', '${o.cliente_telefone}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="WhatsApp Interno">
             <i class="fa-brands fa-whatsapp"></i>
-          </a>
+          </button>
           <button class="btn btn-primary btn-sm" onclick="abrirModalEditarOrcamento(${o.id})" title="Editar">
             <i class="fa-solid fa-pen"></i>
           </button>
@@ -1821,9 +1821,9 @@ async function loadAdminClientes() {
         <td><span class="badge badge-info">${c.total_pedidos} pedidos</span></td>
         <td style="font-weight: 800; color: var(--primary);">R$ ${(c.total_gasto || 0).toFixed(2).replace('.', ',')}</td>
         <td style="display: flex; gap: 5px; flex-wrap: wrap;">
-          <a href="https://wa.me/${c.telefone.replace(/\D/g, '')}" target="_blank" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Conversar">
+          <button onclick="abrirConversaInterna('GERAL', '${c.telefone.replace(/\D/g, \'\')}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Conversar">
             <i class="fa-brands fa-whatsapp"></i>
-          </a>
+          </button>
           <button class="btn btn-primary btn-sm" onclick="abrirModalEditarCliente(${c.id})" title="Editar">
             <i class="fa-solid fa-pen"></i>
           </button>
@@ -2196,6 +2196,13 @@ async function loadWhatsAppInbox() {
     }).join("");
     
   } catch(e) {}
+}
+
+function abrirConversaInterna(codigo, telefone) {
+  const btn = document.getElementById("nav-btn-whatsapp");
+  if (btn) switchAdminTab('whatsapp', btn);
+  else switchAdminTab('whatsapp');
+  abrirInboxChat(codigo, telefone);
 }
 
 async function abrirInboxChat(codigo, telefone) {
