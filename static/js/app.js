@@ -396,6 +396,10 @@ async function loadConfig() {
     document.getElementById('cfg-banner-titulo').value = state.config.banner_titulo || '';
     document.getElementById('cfg-banner-subtitulo').value = state.config.banner_subtitulo || '';
     document.getElementById('cfg-aviso-topo').value = state.config.aviso_topo || '';
+    const whInput = document.getElementById('cfg-webhook-url');
+    if (whInput && !whInput.value) {
+      whInput.value = window.location.origin + "/api/webhook/evolution";
+    }
     document.getElementById('cfg-desconto-pix').value = state.config.desconto_pix || 5.0;
     document.getElementById('cfg-taxa-entrega').value = state.config.taxa_entrega || 15.0;
     document.getElementById('pix-key-input').value = state.config.chave_pix || 'pix@graficarapidaexpress.com.br';
