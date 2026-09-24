@@ -1381,6 +1381,42 @@ async function loadAdminPedidos() {
   }
 }
 
+function verArquivosPedido(id) {
+  const p = (state.pedidosCache || []).find(x => x.id === id);
+  if (!p) return;
+
+  const arquivos = (p.itens || []).filter(i => i.arte_url).map(i => `
+    <div style="margin-bottom: 10px; text-align: left; background: var(--bg-color, #f3f4f6); padding: 10px; border-radius: 8px;">
+      <strong style="font-size: 0.9rem;">${i.produto_nome}</strong><br>
+      <span style="font-size: 0.8rem; color: #666;">Tamanho: ${i.tamanho} | ${i.papel}</span><br>
+      <a href="${i.arte_url}" target="_blank" class="btn btn-primary btn-sm" style="margin-top: 5px; display: inline-block;">
+        <i class="fa-solid fa-download"></i> Baixar Arquivo
+      </a>
+    </div>
+  `).join('');
+  
+  if (!arquivos) {
+    Swal.fire({
+      icon: 'info',
+      title: 'Nenhum arquivo',
+      text: 'O cliente não anexou nenhuma arte neste pedido.',
+      background: document.body.classList.contains('dark-mode') ? '#1e1e2d' : '#ffffff',
+      color: document.body.classList.contains('dark-mode') ? '#f3f4f6' : '#1f2937'
+    });
+    return;
+  }
+
+  Swal.fire({
+    title: 'Arquivos do Pedido',
+    html: `<div style="max-height: 400px; overflow-y: auto; padding: 10px;">${arquivos}</div>`,
+    showCloseButton: true,
+    showConfirmButton: false,
+    background: document.body.classList.contains('dark-mode') ? '#1e1e2d' : '#ffffff',
+    color: document.body.classList.contains('dark-mode') ? '#f3f4f6' : '#1f2937',
+    customClass: { popup: 'swal2-modern-popup' }
+  });
+}
+
 async function alterarStatusPedido(id, statusProd, statusPag) {
   try {
     const res = await fetch(`/api/pedidos/${id}/status`, {
