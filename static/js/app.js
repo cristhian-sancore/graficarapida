@@ -1954,6 +1954,29 @@ async function salvarClienteAdmin(e) {
   }
 }
 
+async function redefinirSenhaCliente() {
+  const id = document.getElementById('admin-cli-id').value;
+  if (!id) return;
+  if (!(await window.confirmAsync("Tem certeza que deseja redefinir a senha deste cliente? Ele receberá a nova senha no WhatsApp."))) return;
+  
+  try {
+    const res = await fetch('/api/clientes/redefinir-senha', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Token': state.adminToken
+      },
+      body: JSON.stringify({ id: id })
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Erro ao redefinir senha');
+    alert(json.message);
+    closeModal('modal-admin-cliente');
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
 async function excluirClienteAdmin(id) {
   if (!(await window.confirmAsync("Tem certeza que deseja excluir este cliente? Essa ação não pode ser desfeita!"))) return;
   

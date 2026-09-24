@@ -1573,6 +1573,55 @@ def delete_cliente(cliente_id):
     conn.close()
     return jsonify({'message': 'Cliente excluído com sucesso!'})
 
+@app.route('/api/clientes/redefinir-senha', methods=['POST'])
+def redefinir_senha_cliente():
+    import random
+    import string
+    
+    token = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token):
+        return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
+
+    data = request.json
+    cliente_id = data.get('id')
+    if not cliente_id:
+        return jsonify({'error': 'ID do cliente não fornecido.'}), 400
+
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT * FROM clientes WHERE id = ?', (cliente_id,))
+    cliente = cursor.fetchone()
+    
+    if not cliente:
+        conn.close()
+        return jsonify({'error': 'Cliente não encontrado.'}), 404
+
+    nova_senha = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
+    senha_hash = generate_password_hash(nova_senha)
+
+    cursor.execute('UPDATE clientes SET senha = ? WHERE id = ?', (senha_hash, cliente_id))
+    
+    cursor.execute('SELECT * FROM configuracoes LIMIT 1')
+    config_row = cursor.fetchone()
+    conn.commit()
+    conn.close()
+
+    if cliente['telefone']:
+        mensagem = f"Olá {cliente['nome']}! Sua senha de acesso ao portal da gráfica foi redefinida.\n\nSua nova senha é: *{nova_senha}*\n\nAcesse nosso site para fazer login."
+        if config_row:
+            send_evolution_whatsapp(
+                numero=cliente['telefone'], 
+                mensagem=mensagem,
+                custom_url=config_row['evolution_api_url'],
+                custom_key=config_row['evolution_api_key'],
+                custom_instance=config_row['evolution_instance']
+            )
+        else:
+            send_evolution_whatsapp(numero=cliente['telefone'], mensagem=mensagem)
+
+    return jsonify({'message': 'Senha redefinida com sucesso e enviada por WhatsApp!'})
+
 @app.route('/api/clientes', methods=['GET'])
 def get_clientes():
     token = request.headers.get('X-Admin-Token')
