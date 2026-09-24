@@ -1851,8 +1851,10 @@ def webhook_evolution():
 
 
 @app.route("/api/chat/inbox", methods=["GET"])
-@admin_required
 def api_chat_inbox():
+    token_admin = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token_admin):
+        return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
     # Retorna as conversas mais recentes agrupadas por referencia_codigo ou telefone
     conn = get_db()
     cursor = conn.cursor()
@@ -1904,8 +1906,10 @@ def api_chat_inbox():
     return jsonify(inbox)
 
 @app.route("/api/chat/unread/admin", methods=["GET"])
-@admin_required
 def api_chat_unread_admin():
+    token_admin = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token_admin):
+        return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT COUNT(*) FROM mensagens_chat WHERE remetente_tipo = %s AND lida = 0" if cursor.is_postgres else "SELECT COUNT(*) FROM mensagens_chat WHERE remetente_tipo = ? AND lida = 0", ("cliente",))
@@ -1914,9 +1918,10 @@ def api_chat_unread_admin():
     return jsonify({"unread": count})
 
 @app.route("/api/chat/unread/cliente", methods=["GET"])
-@client_required
 def api_chat_unread_cliente():
-    cli = get_current_client(request.headers.get("X-Client-Token"))
+    cli = get_current_client(request.headers.get('X-Client-Token'))
+    if not cli:
+        return jsonify({'error': 'Acesso negado.'}), 403
     conn = get_db()
     cursor = conn.cursor()
     telefone = cli["telefone"]
