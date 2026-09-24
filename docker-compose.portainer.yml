@@ -31,6 +31,7 @@ services:
       - PORT=8050
       - FLASK_ENV=production
       - DATABASE_URL=postgresql://graficauser:graficapassword2026@postgres-db:5432/graficadb
+      - APP_URL=https://grafica.cristhiansancore.com.br
     depends_on:
       postgres-db:
         condition: service_healthy
