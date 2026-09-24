@@ -1449,6 +1449,24 @@
   </div>
 
   <!-- JavaScript Main App -->
-  <script src="/static/js/app.js?v=2.98"></script>
+  <script src="/static/js/app.js?v=2.98">
+function switchConfigTab(tabName) {
+  // Hide all config tabs
+  document.querySelectorAll('.cfg-tab-content').forEach(el => el.style.display = 'none');
+  // Reset all buttons
+  document.querySelectorAll('[id^="btn-tab-cfg-"]').forEach(btn => {
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-outline');
+  });
+  
+  // Show selected tab
+  document.getElementById('tab-cfg-' + tabName).style.display = 'block';
+  // Highlight selected button
+  const selectedBtn = document.getElementById('btn-tab-cfg-' + tabName);
+  selectedBtn.classList.remove('btn-outline');
+  selectedBtn.classList.add('btn-primary');
+}
+
+</script>
 </body>
 </html>
