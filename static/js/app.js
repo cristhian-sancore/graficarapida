@@ -36,6 +36,49 @@ window.alert = function(msg) {
   });
 };
 
+
+window.originalConfirm = window.confirm;
+window.confirmAsync = async function(msg) {
+  if (typeof Swal === 'undefined') return window.originalConfirm(msg);
+  const isDark = document.body.classList.contains('dark-mode');
+  const res = await Swal.fire({
+    title: 'Confirmação',
+    text: msg,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Sim',
+    cancelButtonText: 'Cancelar',
+    background: isDark ? '#1e1e2d' : '#ffffff',
+    color: isDark ? '#f3f4f6' : '#1f2937',
+    customClass: { popup: 'swal2-modern-popup' }
+  });
+  return res.isConfirmed;
+};
+
+window.originalPrompt = window.prompt;
+window.promptAsync = async function(msg, defaultVal) {
+  if (typeof Swal === 'undefined') return window.originalPrompt(msg, defaultVal);
+  const isDark = document.body.classList.contains('dark-mode');
+  const res = await Swal.fire({
+    title: 'Atenção',
+    text: msg,
+    input: 'text',
+    inputValue: defaultVal || '',
+    showCancelButton: true,
+    confirmButtonColor: '#4f46e5',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'OK',
+    cancelButtonText: 'Cancelar',
+    background: isDark ? '#1e1e2d' : '#ffffff',
+    color: isDark ? '#f3f4f6' : '#1f2937',
+    customClass: { popup: 'swal2-modern-popup' }
+  });
+  return res.isConfirmed ? res.value : null;
+};
+
+
 const state = {
   produtos: [],
   config: {},
@@ -599,7 +642,7 @@ async function uploadPortalArteFile(input) {
 }
 
 async function deletarArteCliente(id) {
-  if (!confirm('Deseja remover esta arte da sua biblioteca?')) return;
+  if (!(await window.confirmAsync('Deseja remover esta arte da sua biblioteca?'))) return;
   try {
     await fetch(`/api/cliente/artes?id=${id}`, {
       method: 'DELETE',
@@ -1439,7 +1482,7 @@ async function salvarInsumoAdmin(e) {
 }
 
 async function ajustarEstoqueInsumo(id, qtdAtual) {
-  const novaQtd = prompt('Digite a nova quantidade em estoque:', qtdAtual);
+  const novaQtd = await window.promptAsync('Digite a nova quantidade em estoque:', qtdAtual);
   if (novaQtd === null) return;
 
   try {
@@ -1516,7 +1559,7 @@ function abrirModalEditarOrcamento(id) {
 }
 
 async function excluirOrcamentoAdmin(id) {
-  if (!confirm("Tem certeza que deseja excluir este orçamento?")) return;
+  if (!(await window.confirmAsync("Tem certeza que deseja excluir este orçamento?"))) return;
   try {
     const res = await fetch('/api/orcamentos/' + id, {
       method: 'DELETE',
@@ -1622,7 +1665,7 @@ async function salvarCupomAdmin(e) {
 }
 
 async function deletarCupomAdmin(id) {
-  if (!confirm('Deseja deletar este cupom?')) return;
+  if (!(await window.confirmAsync('Deseja deletar este cupom?'))) return;
   try {
     await fetch(`/api/cupons?id=${id}`, { 
       method: 'DELETE',
@@ -1736,7 +1779,7 @@ async function salvarProdutoAdmin(e) {
 }
 
 async function deleteProdutoAdmin(id) {
-  if (!confirm('Deseja realmente excluir este produto?')) return;
+  if (!(await window.confirmAsync('Deseja realmente excluir este produto?'))) return;
   try {
     const res = await fetch(`/api/produtos/${id}`, { 
       method: 'DELETE',
@@ -1893,7 +1936,7 @@ async function salvarClienteAdmin(e) {
 }
 
 async function excluirClienteAdmin(id) {
-  if (!confirm("Tem certeza que deseja excluir este cliente? Essa ação não pode ser desfeita!")) return;
+  if (!(await window.confirmAsync("Tem certeza que deseja excluir este cliente? Essa ação não pode ser desfeita!"))) return;
   
   try {
     const res = await fetch('/api/clientes/' + id, {
@@ -2273,7 +2316,7 @@ async function confirmSaveContact() {
 
 async function apagarConversaInbox() {
   if (!currentInboxChat || !currentInboxTel || !state.adminToken) return;
-  if (!confirm("Tem certeza que deseja apagar essa conversa inteira?")) return;
+  if (!(await window.confirmAsync("Tem certeza que deseja apagar essa conversa inteira?"))) return;
   
   try {
     const res = await fetch(`/api/chat/${encodeURIComponent(currentInboxChat)}?telefone=${encodeURIComponent(currentInboxTel)}`, {
