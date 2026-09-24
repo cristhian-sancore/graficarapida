@@ -469,7 +469,9 @@
             <div id="inbox-messages" style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px;">
               <!-- Mensagens aqui -->
             </div>
-            <div id="inbox-input-area" style="padding: 15px; background: var(--surface); border-top: 1px solid var(--border); display: none; gap: 10px;">
+            <div id="inbox-input-area" style="padding: 15px; background: var(--surface); border-top: 1px solid var(--border); display: none; gap: 10px; align-items: center;">
+              <input type="file" id="inbox-file-input" style="display: none;">
+              <button class="btn btn-secondary" onclick="document.getElementById('inbox-file-input').click()" title="Anexar Arquivo"><i class="fa-solid fa-paperclip"></i></button>
               <input type="text" id="inbox-input" class="form-control" placeholder="Digite uma mensagem..." style="flex: 1;" onkeypress="if(event.key==='Enter') enviarMensagemInbox()">
               <button class="btn btn-primary" onclick="enviarMensagemInbox()">
                 <i class="fa-solid fa-paper-plane"></i>
