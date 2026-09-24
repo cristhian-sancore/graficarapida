@@ -159,9 +159,15 @@
           </h2>
           <p style="color: var(--text-muted); font-size: 0.9rem;" id="cli-perfil-email">cliente@email.com</p>
         </div>
-        <button class="btn btn-secondary btn-sm" onclick="logoutCliente()" style="color: var(--danger);">
-          <i class="fa-solid fa-right-from-bracket"></i> Sair da Conta
-        </button>
+        <div style="display: flex; gap: 15px; align-items: center;">
+          <div style="position: relative; cursor: pointer;" onclick="alert('Verifique os chats dos seus pedidos e orçamentos para ler as novas mensagens!')" title="Mensagens não lidas">
+            <i class="fa-solid fa-bell" style="font-size: 1.5rem; color: var(--text);"></i>
+            <span id="badge-cli-whatsapp-unread" class="badge badge-danger" style="display: none; position: absolute; top: -5px; right: -10px; border-radius: 50%; padding: 2px 5px; font-size: 0.7rem;">0</span>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="logoutCliente()" style="color: var(--danger);">
+            <i class="fa-solid fa-right-from-bracket"></i> Sair da Conta
+          </button>
+        </div>
       </div>
 
       <!-- Portal Navigation Tabs -->
@@ -245,6 +251,10 @@
         </div>
         <div class="sidebar-item" onclick="switchAdminTab('pedidos', this)">
           <i class="fa-solid fa-receipt"></i> Lista Pedidos
+        </div>
+        <div class="sidebar-item" onclick="switchAdminTab('whatsapp', this)">
+          <i class="fa-brands fa-whatsapp"></i> WhatsApp Inbox
+          <span id="badge-whatsapp-unread" class="badge badge-danger" style="display: none; border-radius: 50%; padding: 2px 6px; font-size: 0.75rem; margin-left: auto;">0</span>
         </div>
         <div class="sidebar-item" onclick="switchAdminTab('produtos', this)">
           <i class="fa-solid fa-boxes-stacked"></i> Produtos (CRUD)
@@ -417,6 +427,47 @@
               <!-- Injetado via JS -->
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- TAB: WHATSAPP INBOX -->
+      <div id="admin-tab-whatsapp" style="display: none; height: calc(100vh - 100px); display: flex; flex-direction: column;">
+        <div class="section-header" style="margin-top: 0; flex-shrink: 0;">
+          <h2 class="section-title">WhatsApp Inbox</h2>
+          <button class="btn btn-secondary btn-sm" onclick="loadWhatsAppInbox()">
+            <i class="fa-solid fa-arrows-rotate"></i> Atualizar
+          </button>
+        </div>
+        
+        <div style="display: flex; flex: 1; min-height: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+          <!-- Lista de Conversas -->
+          <div style="width: 300px; border-right: 1px solid var(--border); display: flex; flex-direction: column;">
+            <div style="padding: 10px; background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--border);">
+              <strong>Conversas Ativas</strong>
+            </div>
+            <div id="inbox-list" style="flex: 1; overflow-y: auto;">
+              <!-- Conversas listadas aqui via JS -->
+            </div>
+          </div>
+          
+          <!-- Area do Chat -->
+          <div style="flex: 1; display: flex; flex-direction: column; background: var(--bg);">
+            <div id="inbox-header" style="padding: 15px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between;">
+              <div>
+                <strong id="inbox-title">Selecione uma conversa</strong>
+                <br><small id="inbox-subtitle" style="color: var(--text-muted);"></small>
+              </div>
+            </div>
+            <div id="inbox-messages" style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px;">
+              <!-- Mensagens aqui -->
+            </div>
+            <div id="inbox-input-area" style="padding: 15px; background: var(--surface); border-top: 1px solid var(--border); display: none; gap: 10px;">
+              <input type="text" id="inbox-input" class="form-control" placeholder="Digite uma mensagem..." style="flex: 1;" onkeypress="if(event.key==='Enter') enviarMensagemInbox()">
+              <button class="btn btn-primary" onclick="enviarMensagemInbox()">
+                <i class="fa-solid fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -635,6 +686,17 @@
             <div class="form-group">
               <label class="form-label">Chave PIX (E-mail, CNPJ ou Celular)</label>
               <input type="text" class="form-control" id="cfg-chave-pix" required>
+            </div>
+            
+            <div class="form-group" style="background: var(--bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
+              <label class="form-label">URL do Webhook (Evolution API)</label>
+              <div style="display: flex; gap: 10px;">
+                <input type="text" class="form-control" id="cfg-webhook-url" readonly value="https://portainer.cristhiansancore.com.br/api/webhook/evolution">
+                <button type="button" class="btn btn-secondary" onclick="copiarWebhook()">
+                  <i class="fa-solid fa-copy"></i> Copiar
+                </button>
+              </div>
+              <small style="color: var(--text-muted); display: block; margin-top: 5px;">Cole esta URL nas configurações da sua instância no Evolution API.</small>
             </div>
 
             <div class="form-group">
@@ -1341,6 +1403,6 @@
   </div>
 
   <!-- JavaScript Main App -->
-  <script src="/static/js/app.js?v=2.92"></script>
+  <script src="/static/js/app.js?v=2.93"></script>
 </body>
 </html>

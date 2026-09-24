@@ -1679,22 +1679,65 @@ def api_chat_post(codigo):
         conn.commit()
         conn.close()
         
-        # Se for admin, notifica o cliente via Evolution API
-        if remetente_tipo == 'admin' and telefone:
-            msg_wpp = f"💬 *Gráfica Rápida Express*\nNova mensagem sobre o {codigo}:\n\n_{mensagem}_\n\nAcesse o site para responder!"
-            send_evolution_whatsapp(telefone, msg_wpp)
-            
-        # Se for cliente, notifica a gráfica via Evolution API
-        if remetente_tipo == 'cliente':
-            conn = get_db()
-            cursor = conn.cursor()
-            cursor.execute('SELECT whatsapp FROM configuracoes LIMIT 1')
-            cfg = cursor.fetchone()
-            conn.close()
-            if cfg and dict(cfg).get('whatsapp'):
-                msg_wpp_admin = f"🔔 *Alerta de Mensagem*\nO cliente {remetente_nome} enviou uma mensagem sobre o {codigo}:\n\n_{mensagem}_\n\nAcesse o painel para responder!"
-                send_evolution_whatsapp(dict(cfg)['whatsapp'], msg_wpp_admin)
+        conn = get_db()
+        cursor = conn.cursor()
         
+        # Lógica de Notificação de 15 Minutos
+        enviar_notificacao = False
+        from datetime import datetime, timedelta
+        
+        # 1. Busca a última mensagem do destinatário (para ver se ele está online/ativo)
+        tipo_destinatario = 'cliente' if remetente_tipo == 'admin' else 'admin'
+        if cursor.is_postgres:
+            cursor.execute("SELECT data_envio FROM mensagens_chat WHERE referencia_codigo = %s AND remetente_tipo = %s ORDER BY id DESC LIMIT 1", (codigo, tipo_destinatario))
+        else:
+            cursor.execute("SELECT data_envio FROM mensagens_chat WHERE referencia_codigo = ? AND remetente_tipo = ? ORDER BY id DESC LIMIT 1", (codigo, tipo_destinatario))
+        last_destinatario = cursor.fetchone()
+        
+        # 2. Busca a última mensagem do remetente (para ver se já notificamos há pouco tempo)
+        if cursor.is_postgres:
+            cursor.execute("SELECT data_envio FROM mensagens_chat WHERE referencia_codigo = %s AND remetente_tipo = %s ORDER BY id DESC LIMIT 1 OFFSET 1", (codigo, remetente_tipo))
+        else:
+            cursor.execute("SELECT data_envio FROM mensagens_chat WHERE referencia_codigo = ? AND remetente_tipo = ? ORDER BY id DESC LIMIT 1 OFFSET 1", (codigo, remetente_tipo))
+        last_remetente = cursor.fetchone()
+        
+        conn.close()
+
+        def foi_recente(row):
+            if not row: return False
+            dt_str = dict(row).get('data_envio') if hasattr(row, 'keys') else row[0]
+            if not dt_str: return False
+            try:
+                if isinstance(dt_str, str):
+                    last_time = datetime.strptime(dt_str.split('.')[0], "%Y-%m-%d %H:%M:%S")
+                else:
+                    last_time = dt_str
+                return (datetime.now() - last_time).total_seconds() < 900 # 15 min
+            except:
+                return False
+
+        if not foi_recente(last_destinatario) and not foi_recente(last_remetente):
+            enviar_notificacao = True
+
+        if enviar_notificacao:
+            if remetente_tipo == 'admin' and telefone:
+                # O admin não envia link do site para ele responder se for um chat GERAL
+                if codigo == 'GERAL':
+                    msg_wpp = f"💬 *Gráfica Rápida Express*\n\n_{mensagem}_"
+                else:
+                    msg_wpp = f"💬 *Gráfica Rápida Express*\nNova mensagem sobre o {codigo}:\n\n_{mensagem}_\n\nAcesse o site para responder!"
+                send_evolution_whatsapp(telefone, msg_wpp)
+                
+            if remetente_tipo == 'cliente':
+                conn = get_db()
+                cursor = conn.cursor()
+                cursor.execute('SELECT whatsapp FROM configuracoes LIMIT 1')
+                cfg = cursor.fetchone()
+                conn.close()
+                if cfg and dict(cfg).get('whatsapp'):
+                    msg_wpp_admin = f"🔔 *Alerta de Mensagem*\nO cliente {remetente_nome} enviou uma mensagem sobre o {codigo}:\n\n_{mensagem}_\n\nAcesse o painel para responder!"
+                    send_evolution_whatsapp(dict(cfg)['whatsapp'], msg_wpp_admin)
+                    
         return jsonify({'message': 'Mensagem enviada'})
     except Exception as e:
         import traceback
@@ -1723,27 +1766,195 @@ def webhook_evolution():
         # Pega o telefone (tira o @s.whatsapp.net)
         telefone = remote_jid.split('@')[0]
         
-        # Como não sabemos a qual pedido pertence a mensagem avulsa, 
-        # a estratégia ideal seria usar IA ou o atendente ler no painel.
-        # Por enquanto, só vamos processar se o cliente enviar o CÓDIGO na mensagem ex: "#ORC-1234 ola"
+        # Ignora mensagens de nós mesmos (se o remetente for fromMe = true, embora dependa do payload)
+        if data.get('data', {}).get('key', {}).get('fromMe'):
+            return jsonify({'status': 'ignorado, fromMe'}), 200
+
         import re
+        from datetime import datetime, timedelta
+        
         match = re.search(r'(#[A-Z]+-[A-Z0-9]+)', text.upper())
-        if match:
-            codigo = match.group(1)
-            conn = get_db()
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem)
-                VALUES (?, 'cliente', 'Cliente (Via WhatsApp)', ?, ?)
-            ''', (codigo, telefone, text))
-            conn.commit()
-            conn.close()
-            return jsonify({'status': 'salvo no chat'})
+        codigo = match.group(1) if match else f"GERAL"
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # 1. Salva a mensagem recebida
+        cursor.execute('''
+            INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem)
+            VALUES (?, 'cliente', 'Cliente (Via WhatsApp)', ?, ?)
+        ''', (codigo, telefone, text))
+        conn.commit()
+
+        # 2. Automação do Bot
+        if codigo != "GERAL":
+            # Tentar achar o status do pedido/orçamento
+            prefix = codigo.split('-')[0]
+            status_msg = ""
+            if prefix == "#PED":
+                cursor.execute('SELECT status_producao, total FROM pedidos WHERE codigo_pedido = ?', (codigo,))
+                row = cursor.fetchone()
+                if row:
+                    row_dict = dict(row) if hasattr(row, 'keys') else {'status_producao': row[0], 'total': row[1]}
+                    status_msg = f"Seu pedido {codigo} está atualmente: *{row_dict['status_producao']}*.\nValor total: R$ {row_dict['total']:.2f}".replace('.', ',')
+            elif prefix == "#ORC":
+                cursor.execute('SELECT status, valor_estimado FROM orcamentos WHERE codigo_orcamento = ?', (codigo,))
+                row = cursor.fetchone()
+                if row:
+                    row_dict = dict(row) if hasattr(row, 'keys') else {'status': row[0], 'valor_estimado': row[1]}
+                    status_msg = f"Seu orçamento {codigo} está: *{row_dict['status']}*.\nValor estimado: R$ {row_dict['valor_estimado']:.2f}".replace('.', ',')
             
-        return jsonify({'status': 'sem codigo de rastreio'})
+            if status_msg:
+                bot_reply = f"🤖 *Assistente Automático*\nOlá! Encontrei as informações solicitadas:\n\n{status_msg}\n\nSe precisar falar com um humano, mande outra mensagem."
+                send_evolution_whatsapp(telefone, bot_reply)
+                # Opcional: salvar a resposta do bot no chat
+                cursor.execute("INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem) VALUES (?, 'admin', 'Assistente Virtual', ?, ?)", (codigo, telefone, bot_reply))
+                conn.commit()
+        else:
+            # Fluxo sem código específico (Fallback)
+            # Verifica a última mensagem que nós (admin/bot) enviamos para esse telefone nos últimos 30 min
+            if cursor.is_postgres:
+                cursor.execute("SELECT data_envio FROM mensagens_chat WHERE telefone_cliente = %s AND remetente_tipo = 'admin' ORDER BY id DESC LIMIT 1", (telefone,))
+            else:
+                cursor.execute("SELECT data_envio FROM mensagens_chat WHERE telefone_cliente = ? AND remetente_tipo = 'admin' ORDER BY id DESC LIMIT 1", (telefone,))
+            
+            last_admin = cursor.fetchone()
+            enviar_saudacao = True
+            
+            if last_admin:
+                dt_str = dict(last_admin).get('data_envio') if hasattr(last_admin, 'keys') else last_admin[0]
+                if dt_str:
+                    try:
+                        if isinstance(dt_str, str):
+                            last_time = datetime.strptime(dt_str.split('.')[0], "%Y-%m-%d %H:%M:%S")
+                        else:
+                            last_time = dt_str # it's already a datetime object in psycopg2
+                        if (datetime.now() - last_time).total_seconds() < 1800: # 30 min
+                            enviar_saudacao = False
+                    except:
+                        pass
+            
+            if enviar_saudacao:
+                fallback_msg = "🤖 *Assistente Automático*\nOlá! Recebemos sua mensagem. Se deseja saber sobre um pedido, digite o código (ex: #PED-123).\n\nCaso contrário, aguarde um instante que um atendente humano já falará com você!"
+                send_evolution_whatsapp(telefone, fallback_msg)
+                cursor.execute("INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem) VALUES (?, 'admin', 'Assistente Virtual', ?, ?)", (codigo, telefone, fallback_msg))
+                conn.commit()
+
+        conn.close()
+        return jsonify({'status': 'sucesso'})
     except Exception as e:
-        print("Erro Webhook:", e)
+        import traceback
+        print("Erro Webhook:", traceback.format_exc())
         return jsonify({'error': str(e)}), 500
+
+
+@app.route("/api/chat/inbox", methods=["GET"])
+@admin_required
+def api_chat_inbox():
+    # Retorna as conversas mais recentes agrupadas por referencia_codigo ou telefone
+    conn = get_db()
+    cursor = conn.cursor()
+    if cursor.is_postgres:
+        cursor.execute("""
+            SELECT DISTINCT ON (referencia_codigo, telefone_cliente) 
+                referencia_codigo, telefone_cliente, remetente_nome, mensagem, data_envio, lida, remetente_tipo
+            FROM mensagens_chat 
+            ORDER BY referencia_codigo, telefone_cliente, id DESC
+        """)
+    else:
+        cursor.execute("""
+            SELECT referencia_codigo, telefone_cliente, remetente_nome, mensagem, data_envio, lida, remetente_tipo
+            FROM mensagens_chat 
+            GROUP BY referencia_codigo, telefone_cliente
+            ORDER BY max(id) DESC
+        """)
+    
+    rows = cursor.fetchall()
+    
+    # Ordenar por data_envio decrescente no Postgres tambem
+    def get_data(r):
+        return dict(r).get("data_envio") if hasattr(r, "keys") else r[4]
+    
+    try:
+        rows = sorted(rows, key=lambda x: str(get_data(x)), reverse=True)
+    except:
+        pass
+        
+    inbox = []
+    for r in rows:
+        d = dict(r) if hasattr(r, "keys") else {
+            "referencia_codigo": r[0], "telefone_cliente": r[1], 
+            "remetente_nome": r[2], "mensagem": r[3], 
+            "data_envio": r[4], "lida": r[5], "remetente_tipo": r[6]
+        }
+        
+        # Pega a contagem de n�o lidas para este chat
+        if cursor.is_postgres:
+            cursor.execute("SELECT COUNT(*) FROM mensagens_chat WHERE referencia_codigo = %s AND telefone_cliente = %s AND remetente_tipo = %s AND lida = 0", (d["referencia_codigo"], d["telefone_cliente"], "cliente"))
+        else:
+            cursor.execute("SELECT COUNT(*) FROM mensagens_chat WHERE referencia_codigo = ? AND telefone_cliente = ? AND remetente_tipo = ? AND lida = 0", (d["referencia_codigo"], d["telefone_cliente"], "cliente"))
+        
+        c_row = cursor.fetchone()
+        d["nao_lidas"] = c_row[0] if c_row else 0
+        inbox.append(d)
+        
+    conn.close()
+    return jsonify(inbox)
+
+@app.route("/api/chat/unread/admin", methods=["GET"])
+@admin_required
+def api_chat_unread_admin():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM mensagens_chat WHERE remetente_tipo = %s AND lida = 0" if cursor.is_postgres else "SELECT COUNT(*) FROM mensagens_chat WHERE remetente_tipo = ? AND lida = 0", ("cliente",))
+    count = cursor.fetchone()[0]
+    conn.close()
+    return jsonify({"unread": count})
+
+@app.route("/api/chat/unread/cliente", methods=["GET"])
+@client_required
+def api_chat_unread_cliente():
+    cli = get_current_client(request.headers.get("X-Client-Token"))
+    conn = get_db()
+    cursor = conn.cursor()
+    telefone = cli["telefone"]
+    if cursor.is_postgres:
+        cursor.execute("SELECT COUNT(*) FROM mensagens_chat WHERE remetente_tipo = %s AND lida = 0 AND telefone_cliente = %s", ("admin", telefone))
+    else:
+        cursor.execute("SELECT COUNT(*) FROM mensagens_chat WHERE remetente_tipo = ? AND lida = 0 AND telefone_cliente = ?", ("admin", telefone))
+    count = cursor.fetchone()[0]
+    conn.close()
+    return jsonify({"unread": count})
+
+@app.route("/api/chat/<path:codigo>/read", methods=["POST"])
+def api_chat_read(codigo):
+    token_admin = request.headers.get("X-Admin-Token")
+    token_cliente = request.headers.get("X-Client-Token")
+    if not token_admin and not token_cliente:
+        return jsonify({"error": "Acesso negado"}), 401
+        
+    remetente_esperado = "cliente" if token_admin else "admin"
+    telefone = request.json.get("telefone", "")
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    if cursor.is_postgres:
+        query = "UPDATE mensagens_chat SET lida = 1 WHERE referencia_codigo = %s AND remetente_tipo = %s"
+        params = [codigo, remetente_esperado]
+        if telefone:
+            query += " AND telefone_cliente = %s"
+            params.append(telefone)
+        cursor.execute(query, tuple(params))
+    else:
+        query = "UPDATE mensagens_chat SET lida = 1 WHERE referencia_codigo = ? AND remetente_tipo = ?"
+        params = [codigo, remetente_esperado]
+        if telefone:
+            query += " AND telefone_cliente = ?"
+            params.append(telefone)
+        cursor.execute(query, tuple(params))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "lidas"})
 
 if __name__ == '__main__':
     print("=" * 60)

@@ -1140,10 +1140,10 @@ function switchAdminTab(tab, btn) {
   document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
   if (btn) btn.classList.add('active');
 
-  const tabs = ['dashboard', 'kanban', 'pedidos', 'produtos', 'estoque', 'caixa', 'orcamentos', 'cupons', 'clientes', 'config'];
+  const tabs = ['dashboard', 'kanban', 'pedidos', 'produtos', 'estoque', 'caixa', 'orcamentos', 'cupons', 'clientes', 'config', 'whatsapp'];
   tabs.forEach(t => {
     const el = document.getElementById(`admin-tab-${t}`);
-    if (el) el.style.display = t === tab ? 'block' : 'none';
+    if (el) el.style.display = t === tab ? (t === 'whatsapp' ? 'flex' : 'block') : 'none';
   });
 
   if (tab === 'dashboard') loadDashboardMetrics();
@@ -1155,6 +1155,7 @@ function switchAdminTab(tab, btn) {
   if (tab === 'orcamentos') loadAdminOrcamentos();
   if (tab === 'cupons') loadAdminCupons();
   if (tab === 'clientes') loadAdminClientes();
+  if (tab === 'whatsapp') loadWhatsAppInbox();
 }
 
 async function loadDashboardMetrics() {
@@ -1294,6 +1295,9 @@ async function loadAdminPedidos() {
             <button onclick="abrirChatWidget('${p.codigo_pedido}', '${p.cliente_telefone}', '${p.cliente_nome}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Chat Interno">
               <i class="fa-solid fa-comments"></i>
             </button>
+            <a href="https://wa.me/${p.cliente_telefone}?text=${encodeURIComponent('Olá ' + p.cliente_nome + ', tudo bem? Sobre o seu pedido ' + p.codigo_pedido + '...')}" target="_blank" class="btn btn-secondary btn-sm" style="color: #25d366;" title="WhatsApp Externo">
+              <i class="fa-brands fa-whatsapp"></i>
+            </a>
           </div>
         </td>
       </tr>
@@ -1459,6 +1463,9 @@ async function loadAdminOrcamentos() {
           <button onclick="abrirChatWidget('${o.codigo_orcamento}', '${o.cliente_telefone}', '${o.cliente_nome}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Chat Interno">
             <i class="fa-solid fa-comments"></i>
           </button>
+          <a href="https://wa.me/${o.cliente_telefone}?text=${encodeURIComponent('Olá ' + o.cliente_nome + ', tudo bem? Sobre o seu orçamento ' + o.codigo_orcamento + '...')}" target="_blank" class="btn btn-secondary btn-sm" style="color: #25d366;" title="WhatsApp Externo">
+            <i class="fa-brands fa-whatsapp"></i>
+          </a>
           <button class="btn btn-primary btn-sm" onclick="abrirModalEditarOrcamento(${o.id})" title="Editar">
             <i class="fa-solid fa-pen"></i>
           </button>
@@ -2081,6 +2088,185 @@ async function enviarMensagemChat() {
     }
   } catch(e) {
     console.error(e);
+  }
+}
+// ==========================================================================
+// WHATSAPP INBOX (ADMIN) & UNREAD POLLING
+// ==========================================================================
+let inboxInterval = null;
+let currentInboxChat = null;
+let currentInboxTel = null;
+
+async function checkUnreadBadges() {
+  if (state.adminToken) {
+    try {
+      const res = await fetch("/api/chat/unread/admin", { headers: { "X-Admin-Token": state.adminToken } });
+      if (res.ok) {
+        const data = await res.json();
+        const badge = document.getElementById("badge-whatsapp-unread");
+        if (badge) {
+          if (data.unread > 0) {
+            if (badge.innerText !== data.unread.toString()) {
+                const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+                audio.play().catch(e=>console.log(e));
+            }
+            badge.innerText = data.unread;
+            badge.style.display = "inline-block";
+          } else {
+            badge.style.display = "none";
+          }
+        }
+      }
+    } catch(e) {}
+  }
+  
+  if (state.clientToken) {
+    try {
+      const res = await fetch("/api/chat/unread/cliente", { headers: { "X-Client-Token": state.clientToken } });
+      if (res.ok) {
+        const data = await res.json();
+        const badge = document.getElementById("badge-cli-whatsapp-unread");
+        if (badge) {
+          if (data.unread > 0) {
+            if (badge.innerText !== data.unread.toString()) {
+                const audio = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+                audio.play().catch(e=>console.log(e));
+            }
+            badge.innerText = data.unread;
+            badge.style.display = "inline-block";
+          } else {
+            badge.style.display = "none";
+          }
+        }
+      }
+    } catch(e) {}
+  }
+}
+
+// Global poller
+setInterval(checkUnreadBadges, 15000);
+
+async function loadWhatsAppInbox() {
+  if (!state.adminToken) return;
+  try {
+    const res = await fetch("/api/chat/inbox", { headers: { "X-Admin-Token": state.adminToken } });
+    if (!res.ok) return;
+    const conversas = await res.json();
+    
+    const list = document.getElementById("inbox-list");
+    if (!list) return;
+    
+    if (conversas.length === 0) {
+      list.innerHTML = `<div style="padding: 20px; text-align: center; color: #888;">Nenhuma conversa ativa</div>`;
+      return;
+    }
+    
+    list.innerHTML = conversas.map(c => {
+      const time = new Date(c.data_envio).toLocaleTimeString([], {hour: "2-digit", minute:"2-digit"});
+      const bg = (currentInboxChat === c.referencia_codigo && currentInboxTel === c.telefone_cliente) ? "rgba(255,255,255,0.1)" : "transparent";
+      const unreadBadge = c.nao_lidas > 0 ? `<span class="badge badge-danger" style="border-radius: 50%; padding: 2px 6px; font-size: 0.7rem;">${c.nao_lidas}</span>` : "";
+      
+      const nome = c.referencia_codigo === "GERAL" ? c.telefone_cliente : `${c.referencia_codigo} (${c.telefone_cliente})`;
+      
+      return `
+        <div style="padding: 15px; border-bottom: 1px solid var(--border); cursor: pointer; background: ${bg}; display: flex; justify-content: space-between; align-items: center;" onclick="abrirInboxChat('${c.referencia_codigo}', '${c.telefone_cliente}')">
+          <div style="overflow: hidden;">
+            <div style="font-weight: bold; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${nome}
+            </div>
+            <div style="font-size: 0.8rem; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${c.remetente_tipo === "admin" ? "Você: " : ""}${c.mensagem}
+            </div>
+          </div>
+          <div style="text-align: right; min-width: 40px;">
+            <div style="font-size: 0.75rem; color: #888; margin-bottom: 5px;">${time}</div>
+            ${unreadBadge}
+          </div>
+        </div>
+      `;
+    }).join("");
+    
+  } catch(e) {}
+}
+
+async function abrirInboxChat(codigo, telefone) {
+  currentInboxChat = codigo;
+  currentInboxTel = telefone;
+  
+  document.getElementById("inbox-title").innerText = codigo === "GERAL" ? "Atendimento Avulso" : "Atendimento: " + codigo;
+  document.getElementById("inbox-subtitle").innerText = "WhatsApp: " + telefone;
+  document.getElementById("inbox-input-area").style.display = "flex";
+  
+  // Mark as read
+  await fetch(`/api/chat/${encodeURIComponent(codigo)}/read`, {
+    method: "POST",
+    headers: { "X-Admin-Token": state.adminToken, "Content-Type": "application/json" },
+    body: JSON.stringify({ telefone })
+  });
+  
+  loadWhatsAppInbox();
+  carregarMensagensInbox();
+  checkUnreadBadges();
+  
+  if (inboxInterval) clearInterval(inboxInterval);
+  inboxInterval = setInterval(carregarMensagensInbox, 5000);
+}
+
+async function carregarMensagensInbox() {
+  if (!currentInboxChat || !state.adminToken) return;
+  try {
+    const res = await fetch(`/api/chat/${encodeURIComponent(currentInboxChat)}`, { headers: { "X-Admin-Token": state.adminToken } });
+    if (!res.ok) return;
+    const mensagens = await res.json();
+    
+    // Filter by phone if it is GERAL
+    const filtered = currentInboxChat === "GERAL" ? mensagens.filter(m => m.telefone_cliente === currentInboxTel) : mensagens;
+    
+    const container = document.getElementById("inbox-messages");
+    if (!container) return;
+    
+    container.innerHTML = filtered.map(m => {
+      const isMe = m.remetente_tipo === "admin";
+      const alignClass = isMe ? "cliente" : "admin"; // Reusing chat widget classes (green for me)
+      const time = new Date(m.data_envio).toLocaleTimeString([], {hour: "2-digit", minute:"2-digit"});
+      
+      return `
+        <div class="chat-msg ${alignClass}" style="max-width: 70%; align-self: ${isMe ? "flex-end" : "flex-start"};">
+          <div style="margin-top: 4px;">${m.mensagem}</div>
+          <span class="chat-msg-time">${time}</span>
+        </div>
+      `;
+    }).join("");
+    
+    container.scrollTop = container.scrollHeight;
+  } catch(e) {}
+}
+
+async function enviarMensagemInbox() {
+  const input = document.getElementById("inbox-input");
+  const msg = input.value.trim();
+  if (!msg || !currentInboxChat || !state.adminToken) return;
+  
+  try {
+    input.value = "";
+    const res = await fetch(`/api/chat/${encodeURIComponent(currentInboxChat)}`, {
+      method: "POST",
+      headers: { "X-Admin-Token": state.adminToken, "Content-Type": "application/json" },
+      body: JSON.stringify({ mensagem: msg, telefone: currentInboxTel })
+    });
+    if (res.ok) {
+      carregarMensagensInbox();
+      loadWhatsAppInbox();
+    }
+  } catch(e) {}
+}
+
+function copiarWebhook() {
+  const input = document.getElementById("cfg-webhook-url");
+  if (input) {
+    navigator.clipboard.writeText(input.value).then(() => {
+      alert("URL copiada com sucesso!");
+    });
   }
 }
 
