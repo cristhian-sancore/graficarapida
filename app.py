@@ -2050,6 +2050,86 @@ def webhook_evolution():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/chat/telefone/<path:telefone>', methods=['GET'])
+def api_chat_telefone_get(telefone):
+    token_admin = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token_admin):
+        return jsonify({'error': 'Acesso negado'}), 401
+        
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM mensagens_chat WHERE telefone_cliente = ? ORDER BY data_envio ASC', (telefone,))
+    mensagens = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return jsonify(mensagens)
+
+@app.route('/api/chat/telefone/<path:telefone>', methods=['POST'])
+def api_chat_telefone_post(telefone):
+    token_admin = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token_admin):
+        return jsonify({'error': 'Acesso negado'}), 401
+        
+    data = request.json
+    mensagem = data.get('mensagem', '').strip()
+    file_b64 = data.get('file_base64')
+    file_name = data.get('file_name', 'arquivo')
+    file_type = data.get('file_type', 'image')
+    file_mime = data.get('file_mime', 'application/octet-stream')
+
+    if not mensagem and not file_b64:
+        return jsonify({'error': 'Mensagem vazia'}), 400
+
+    media_path_db = None
+    if file_b64:
+        import base64, uuid, os
+        try:
+            b64_content = file_b64.split(',')[-1] if ',' in file_b64 else file_b64
+            file_bytes = base64.b64decode(b64_content)
+            ext = file_name.split('.')[-1] if '.' in file_name else 'bin'
+            saved_name = f"admin_{uuid.uuid4().hex[:8]}.{ext}"
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], saved_name)
+            with open(filepath, 'wb') as f:
+                f.write(file_bytes)
+            media_path_db = f"/static/uploads/{saved_name}"
+            if not mensagem or mensagem == 'none':
+                mensagem = f"[MEDIA]:{media_path_db}"
+            else:
+                mensagem = f"{mensagem}\n[MEDIA]:{media_path_db}"
+        except Exception as e:
+            print("Erro ao salvar mídia do admin:", e)
+            
+    msg_envio = data.get('mensagem', '')
+    if file_b64:
+        success, err = send_evolution_whatsapp(telefone, msg_envio, media_base64=file_b64, media_type=file_type, media_mime=file_mime, media_name=file_name)
+    else:
+        success, err = send_evolution_whatsapp(telefone, msg_envio)
+        
+    if not success:
+        return jsonify({'error': err}), 500
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem)
+        VALUES ('GERAL', 'admin', 'Admin', ?, ?)
+    ''', (telefone, mensagem))
+    conn.commit()
+    conn.close()
+    return jsonify({'status': 'sucesso'})
+
+@app.route('/api/chat/telefone/<path:telefone>', methods=['DELETE'])
+def api_chat_telefone_delete(telefone):
+    token_admin = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token_admin):
+        return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
+        
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM mensagens_chat WHERE telefone_cliente = ?', (telefone,))
+    conn.commit()
+    conn.close()
+    return jsonify({'status': 'sucesso'})
+
 @app.route("/api/chat/inbox", methods=["GET"])
 def api_chat_inbox():
     token_admin = request.headers.get('X-Admin-Token')
