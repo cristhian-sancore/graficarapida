@@ -363,6 +363,12 @@ function atualizarUIClienteLogado() {
     if (pLogado) pLogado.style.display = 'block';
     if (nNome) nNome.innerText = state.clienteLogado.nome;
     if (nEmail) nEmail.innerText = `${state.clienteLogado.email} | WhatsApp: ${state.clienteLogado.telefone}`;
+    
+    // Auto-fill checkout fields
+    const chkNome = document.getElementById('checkout-nome');
+    const chkTel = document.getElementById('checkout-telefone');
+    if (chkNome && !chkNome.value) chkNome.value = state.clienteLogado.nome;
+    if (chkTel && !chkTel.value) chkTel.value = state.clienteLogado.telefone;
   } else {
     if (pDeslogado) pDeslogado.style.display = 'block';
     if (pLogado) pLogado.style.display = 'none';
@@ -1026,14 +1032,25 @@ function atualizarTotalCheckout() {
 }
 
 async function finalizarPedidoCheckout() {
-  const nome = document.getElementById('checkout-nome').value.trim();
-  const telefone = document.getElementById('checkout-telefone').value.trim();
+  let nome = document.getElementById('checkout-nome').value.trim();
+  let telefone = document.getElementById('checkout-telefone').value.trim();
   const pagamento = document.getElementById('checkout-pagamento').value;
   const entrega = document.getElementById('checkout-entrega').value;
   const endereco = document.getElementById('checkout-endereco').value.trim();
 
+  if (state.clienteLogado) {
+    if (!nome) nome = state.clienteLogado.nome;
+    if (!telefone) telefone = state.clienteLogado.telefone;
+  }
+
   if (!nome || !telefone) {
-    alert('Por favor, informe seu Nome Completo e WhatsApp!');
+    Swal.fire({
+      icon: 'warning',
+      title: 'Atenção',
+      text: 'Por favor, informe seu Nome Completo e WhatsApp!',
+      background: document.body.classList.contains('dark-mode') ? '#1e1e2d' : '#ffffff',
+      color: document.body.classList.contains('dark-mode') ? '#f3f4f6' : '#1f2937'
+    });
     return;
   }
   if (state.carrinho.length === 0) {
