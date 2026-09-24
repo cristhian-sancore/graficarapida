@@ -26,3 +26,8 @@ ENV/
 .idea/
 .vscode/
 *.log
+.ACESSO/
+scratch/
+containers.json
+fix*.py
+update_stack.json

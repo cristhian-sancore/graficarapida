@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- Design System CSS -->
-  <link rel="stylesheet" href="/static/css/style.css?v=2.9">
+  <link rel="stylesheet" href="/static/css/style.css?v=3.10">
   <!-- SweetAlert2 -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
@@ -470,10 +470,10 @@
               <!-- Mensagens aqui -->
             </div>
             <div id="inbox-input-area" style="padding: 15px; background: var(--surface); border-top: 1px solid var(--border); display: none; gap: 10px; align-items: center;">
-              <input type="file" id="inbox-file-input" style="display: none;" onchange="document.getElementById('inbox-file-name').innerText = this.files.length > 0 ? this.files[0].name : '';">
+              <input type="file" id="inbox-file-input" style="display: none;" onchange="const f = this.files.length > 0 ? this.files[0].name : ''; const el = document.getElementById('inbox-file-name'); if (f) { el.innerHTML = f + ' <span style=\'cursor:pointer;color:var(--danger);font-weight:bold;margin-left:4px;font-size:1rem;\'>&times;</span>'; el.style.display = 'inline-flex'; } else { el.innerHTML = ''; el.style.display = 'none'; }">
               <button class="btn btn-secondary" onclick="document.getElementById('inbox-file-input').click()" title="Anexar Arquivo"><i class="fa-solid fa-paperclip"></i></button>
               <button class="btn btn-secondary" onclick="document.getElementById('inbox-input').value += '😀'" title="Inserir Emoticon"><i class="fa-regular fa-face-smile"></i></button>
-              <div id="inbox-file-name" style="font-size: 0.8rem; color: var(--primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;"></div>
+              <div id="inbox-file-name" style="font-size: 0.8rem; color: var(--primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; background: rgba(0,210,255,0.12); border: 1px solid rgba(0,210,255,0.3); padding: 4px 8px; border-radius: 6px; display: none; align-items: center; cursor: pointer;" onclick="document.getElementById('inbox-file-input').value=''; this.innerHTML=''; this.style.display='none';" title="Clique para remover o anexo"></div>
               <input type="text" id="inbox-input" class="form-control" placeholder="Digite uma mensagem..." style="flex: 1;" onkeypress="if(event.key==='Enter') enviarMensagemInbox()">
               <button class="btn btn-primary" onclick="enviarMensagemInbox()">
                 <i class="fa-solid fa-paper-plane"></i>
@@ -1451,7 +1451,8 @@
   </div>
 
   <!-- JavaScript Main App -->
-  <script src="/static/js/app.js?v=2.98">
+  <script src="/static/js/app.js?v=3.10"></script>
+  <script>
 function switchConfigTab(tabName) {
   // Hide all config tabs
   document.querySelectorAll('.cfg-tab-content').forEach(el => el.style.display = 'none');
@@ -1468,7 +1469,6 @@ function switchConfigTab(tabName) {
   selectedBtn.classList.remove('btn-outline');
   selectedBtn.classList.add('btn-primary');
 }
-
-</script>
+  </script>
 </body>
 </html>

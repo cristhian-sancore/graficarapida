@@ -2247,16 +2247,17 @@ function renderChatMessageContent(msg) {
   
   if (msg.includes('[MEDIA]:')) {
     const parts = msg.split('[MEDIA]:');
-    const textPart = parts[0].trim();
+    let textPart = parts[0].trim();
+    if (textPart.toLowerCase() === 'none') textPart = '';
     const mediaUrl = parts[1].trim().split('\n')[0].trim();
-    const lowerUrl = mediaUrl.toLowerCase();
+    const cleanUrl = mediaUrl.split('?')[0].split('#')[0].toLowerCase();
     
     let mediaHtml = '';
     const imgExts = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg'];
     const audioExts = ['.ogg', '.mp3', '.wav', '.m4a', '.aac'];
     const videoExts = ['.mp4', '.webm', '.mov'];
     
-    if (imgExts.some(ext => lowerUrl.endsWith(ext))) {
+    if (imgExts.some(ext => cleanUrl.endsWith(ext))) {
       mediaHtml = `
         <div style="margin-top: 6px;">
           <a href="${mediaUrl}" target="_blank" title="Clique para abrir em tela cheia">
@@ -2264,13 +2265,13 @@ function renderChatMessageContent(msg) {
           </a>
         </div>
       `;
-    } else if (audioExts.some(ext => lowerUrl.endsWith(ext))) {
+    } else if (audioExts.some(ext => cleanUrl.endsWith(ext))) {
       mediaHtml = `
         <div style="margin-top: 6px;">
           <audio controls src="${mediaUrl}" style="max-width: 100%; height: 36px;"></audio>
         </div>
       `;
-    } else if (videoExts.some(ext => lowerUrl.endsWith(ext))) {
+    } else if (videoExts.some(ext => cleanUrl.endsWith(ext))) {
       mediaHtml = `
         <div style="margin-top: 6px;">
           <video controls src="${mediaUrl}" style="max-width: 100%; max-height: 280px; border-radius: 8px;"></video>
@@ -2300,14 +2301,15 @@ function formatChatMessagePreview(msg) {
   if (!msg) return '';
   if (msg.includes('[MEDIA]:')) {
     const parts = msg.split('[MEDIA]:');
-    const text = parts[0].trim();
-    const url = parts[1].trim().toLowerCase();
+    let text = parts[0].trim();
+    if (text.toLowerCase() === 'none') text = '';
+    const url = parts[1].trim().split('?')[0].split('#')[0].toLowerCase();
     let icon = '📄 [Arquivo]';
     if (url.endsWith('.jpg') || url.endsWith('.jpeg') || url.endsWith('.png') || url.endsWith('.webp') || url.endsWith('.gif')) {
       icon = '📷 [Imagem]';
-    } else if (url.endsWith('.ogg') || url.endsWith('.mp3') || url.endsWith('.wav') || url.endsWith('.m4a')) {
+    } else if (url.endsWith('.ogg') || url.endsWith('.mp3') || url.endsWith('.wav') || url.endsWith('.m4a') || url.endsWith('.aac')) {
       icon = '🎵 [Áudio]';
-    } else if (url.endsWith('.mp4') || url.endsWith('.webm')) {
+    } else if (url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.mov')) {
       icon = '🎬 [Vídeo]';
     }
     return text ? `${text} ${icon}` : icon;
@@ -2522,6 +2524,13 @@ async function abrirInboxChat(telefone, nome) {
   document.getElementById("inbox-input-area").style.display = "flex";
   document.getElementById("inbox-actions").style.display = "flex";
   
+  const fileInput = document.getElementById('inbox-file-input');
+  if (fileInput) fileInput.value = '';
+  const fileNameEl = document.getElementById('inbox-file-name');
+  if (fileNameEl) { fileNameEl.innerHTML = ''; fileNameEl.style.display = 'none'; }
+  const input = document.getElementById("inbox-input");
+  if (input) input.value = '';
+  
   // Mark as read
   await fetch(`/api/chat/telefone/${encodeURIComponent(currentInboxTel)}/read`, {
     method: "POST",
@@ -2584,6 +2593,10 @@ async function apagarConversaInbox() {
       document.getElementById("inbox-input-area").style.display = "none";
       document.getElementById("inbox-actions").style.display = "none";
       document.getElementById("inbox-messages").innerHTML = "";
+      const fileInput = document.getElementById('inbox-file-input');
+      if (fileInput) fileInput.value = '';
+      const fileNameEl = document.getElementById('inbox-file-name');
+      if (fileNameEl) { fileNameEl.innerHTML = ''; fileNameEl.style.display = 'none'; }
       if (inboxInterval) clearInterval(inboxInterval);
       loadWhatsAppInbox();
     }
@@ -2626,10 +2639,11 @@ async function carregarMensagensInbox() {
 
 async function enviarMensagemInbox() {
   const input = document.getElementById("inbox-input");
-  const msg = input.value.trim();
+  const msg = input ? input.value.trim() : '';
   
   const fileInput = document.getElementById('inbox-file-input');
-  const hasFile = fileInput && fileInput.files.length > 0;
+  const fileNameEl = document.getElementById('inbox-file-name');
+  const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
   
   if ((!msg && !hasFile) || !currentInboxTel || !state.adminToken) return;
   
@@ -2647,11 +2661,16 @@ async function enviarMensagemInbox() {
       else if (file.type.startsWith('audio/')) payload.file_type = 'audio';
       else if (file.type.startsWith('video/')) payload.file_type = 'video';
       else payload.file_type = 'document';
-      fileInput.value = '';
+  }
+  
+  if (input) input.value = "";
+  if (fileInput) fileInput.value = '';
+  if (fileNameEl) {
+    fileNameEl.innerHTML = '';
+    fileNameEl.style.display = 'none';
   }
   
   try {
-    input.value = "";
     const res = await fetch(`/api/chat/telefone/${encodeURIComponent(currentInboxTel)}`, {
       method: "POST",
       headers: { "X-Admin-Token": state.adminToken, "Content-Type": "application/json" },
@@ -2661,7 +2680,9 @@ async function enviarMensagemInbox() {
       carregarMensagensInbox();
       loadWhatsAppInbox();
     }
-  } catch(e) {}
+  } catch(e) {
+    console.error("Erro ao enviar mensagem:", e);
+  }
 }
 
 function copiarWebhook() {
