@@ -1393,24 +1393,32 @@ async function ajustarEstoqueInsumo(id, qtdAtual) {
 
 // --- ORÇAMENTISTA ---
 
+window.allOrcamentos = [];
+
 async function loadAdminOrcamentos() {
   try {
     const res = await fetch('/api/orcamentos', {
       headers: { 'X-Admin-Token': state.adminToken }
     });
-    const orcs = await res.json();
+    window.allOrcamentos = await res.json();
 
-    document.getElementById('admin-orcamentos-tbody').innerHTML = orcs.map(o => `
+    document.getElementById('admin-orcamentos-tbody').innerHTML = window.allOrcamentos.map(o => `
       <tr>
         <td><strong>${o.codigo_orcamento}</strong></td>
         <td>${o.cliente_nome}<br><small style="color: var(--text-muted);">${o.cliente_telefone}</small></td>
         <td>${o.descricao}</td>
         <td style="font-weight: 800; color: var(--primary);">R$ ${o.valor_estimado.toFixed(2).replace('.', ',')}</td>
-        <td><span class="badge ${o.status === 'Aprovado' ? 'badge-success' : 'badge-warning'}">${o.status}</span></td>
-        <td>
-          <a href="https://wa.me/${o.cliente_telefone.replace(/\D/g, '')}?text=Olá! Segue o seu orçamento ${o.codigo_orcamento}: ${encodeURIComponent(o.descricao)} no valor de R$ ${o.valor_estimado.toFixed(2)}" target="_blank" class="btn btn-secondary btn-sm" style="color: #25d366;">
-            <i class="fa-brands fa-whatsapp"></i> Enviar
+        <td><span class="badge ${o.status === 'Aprovado' ? 'badge-success' : o.status === 'Rejeitado' ? 'badge-danger' : o.status === 'Concluído' ? 'badge-info' : 'badge-warning'}">${o.status}</span></td>
+        <td style="display: flex; gap: 5px; flex-wrap: wrap;">
+          <a href="https://wa.me/${o.cliente_telefone.replace(/\D/g, '')}?text=Olá! Segue o seu orçamento ${o.codigo_orcamento}: ${encodeURIComponent(o.descricao)} no valor de R$ ${o.valor_estimado.toFixed(2)}" target="_blank" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Enviar WhatsApp">
+            <i class="fa-brands fa-whatsapp"></i>
           </a>
+          <button class="btn btn-primary btn-sm" onclick="abrirModalEditarOrcamento(${o.id})" title="Editar">
+            <i class="fa-solid fa-pen"></i>
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="excluirOrcamentoAdmin(${o.id})" title="Excluir">
+            <i class="fa-solid fa-trash"></i>
+          </button>
         </td>
       </tr>
     `).join('');
@@ -1420,30 +1428,72 @@ async function loadAdminOrcamentos() {
 }
 
 function openOrcamentoModal() {
+  document.getElementById('form-admin-orcamento').reset();
+  document.getElementById('orc-id').value = '';
+  document.getElementById('orc-status').value = 'Pendente';
   openModal('modal-admin-orcamento');
+}
+
+function abrirModalEditarOrcamento(id) {
+  const o = window.allOrcamentos.find(x => x.id === id);
+  if (!o) return;
+  document.getElementById('orc-id').value = o.id;
+  document.getElementById('orc-nome').value = o.cliente_nome;
+  document.getElementById('orc-telefone').value = o.cliente_telefone;
+  document.getElementById('orc-desc').value = o.descricao;
+  document.getElementById('orc-valor').value = o.valor_estimado;
+  document.getElementById('orc-status').value = o.status;
+  openModal('modal-admin-orcamento');
+}
+
+async function excluirOrcamentoAdmin(id) {
+  if (!confirm("Tem certeza que deseja excluir este orçamento?")) return;
+  try {
+    const res = await fetch('/api/orcamentos/' + id, {
+      method: 'DELETE',
+      headers: { 'X-Admin-Token': state.adminToken }
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Erro ao excluir');
+    alert(json.message);
+    loadAdminOrcamentos();
+  } catch (err) {
+    alert(err.message);
+  }
 }
 
 async function salvarOrcamentoAdmin(e) {
   e.preventDefault();
+  const id = document.getElementById('orc-id').value;
   const payload = {
     cliente_nome: document.getElementById('orc-nome').value,
     cliente_telefone: document.getElementById('orc-telefone').value,
     descricao: document.getElementById('orc-desc').value,
-    valor_estimado: parseFloat(document.getElementById('orc-valor').value)
+    valor_estimado: parseFloat(document.getElementById('orc-valor').value),
+    status: document.getElementById('orc-status').value
   };
 
   try {
-    const res = await fetch('/api/orcamentos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const url = id ? '/api/orcamentos/' + id : '/api/orcamentos';
+    const method = id ? 'PUT' : 'POST';
+    const res = await fetch(url, {
+      method: method,
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-Admin-Token': state.adminToken
+      },
       body: JSON.stringify(payload)
     });
+    const json = await res.json();
     if (res.ok) {
+      alert(json.message);
       closeModal('modal-admin-orcamento');
       loadAdminOrcamentos();
+    } else {
+      alert(json.error || 'Erro ao salvar orçamento');
     }
   } catch (err) {
-    console.error('Erro salvar orcamento:', err);
+    alert(err.message);
   }
 }
 

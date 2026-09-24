@@ -1329,6 +1329,32 @@ def api_orcamentos():
         conn.close()
         return jsonify({'message': 'Orçamento criado!', 'id': orc_id, 'codigo': codigo}), 201
 
+@app.route('/api/orcamentos/<int:orc_id>', methods=['PUT', 'DELETE'])
+def api_orcamento_edit(orc_id):
+    token = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token):
+        return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if request.method == 'PUT':
+        data = request.json
+        cursor.execute('''
+            UPDATE orcamentos 
+            SET cliente_nome = ?, cliente_telefone = ?, descricao = ?, valor_estimado = ?, status = ?
+            WHERE id = ?
+        ''', (data.get('cliente_nome'), data.get('cliente_telefone'), data.get('descricao'), float(data.get('valor_estimado', 0)), data.get('status', 'Pendente'), orc_id))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'Orçamento atualizado com sucesso!'})
+
+    elif request.method == 'DELETE':
+        cursor.execute('DELETE FROM orcamentos WHERE id = ?', (orc_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'Orçamento excluído com sucesso!'})
+
 @app.route('/api/cupons', methods=['GET', 'POST', 'DELETE'])
 def api_cupons():
     conn = get_db()
