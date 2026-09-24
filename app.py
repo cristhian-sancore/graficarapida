@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import sqlite3
 import json
@@ -18,7 +18,7 @@ app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024  # 32MB max upload
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# Se o diretório /app/data existir (Portainer volume), salva o banco em /app/data/grafica.db
+# Se o diretÃ³rio /app/data existir (Portainer volume), salva o banco em /app/data/grafica.db
 default_db_dir = '/app/data' if os.path.exists('/app/data') else BASE_DIR
 default_db_path = os.path.join(default_db_dir, 'grafica.db')
 
@@ -174,7 +174,7 @@ def init_db():
         )
     ''')
 
-    # Configurações do Site / CMS / Evolution API
+    # ConfiguraÃ§Ãµes do Site / CMS / Evolution API
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS configuracoes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -194,7 +194,7 @@ def init_db():
     ''')
     conn.commit()
     
-    # Migrações das configurações da Evolution API
+    # MigraÃ§Ãµes das configuraÃ§Ãµes da Evolution API
     safe_add_column(cursor, conn, 'configuracoes', 'evolution_api_url TEXT')
     safe_add_column(cursor, conn, 'configuracoes', 'evolution_api_key TEXT')
     safe_add_column(cursor, conn, 'configuracoes', 'evolution_instance TEXT')
@@ -219,7 +219,7 @@ def init_db():
     ''')
     conn.commit()
 
-    # Clientes com Autenticação e Código WhatsApp
+    # Clientes com AutenticaÃ§Ã£o e CÃ³digo WhatsApp
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS clientes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -242,7 +242,7 @@ def init_db():
     safe_add_column(cursor, conn, 'clientes', 'codigo_validacao TEXT')
     safe_add_column(cursor, conn, 'clientes', 'status_validacao TEXT DEFAULT \'Pendente\'')
 
-    # Usuários Administradores
+    # UsuÃ¡rios Administradores
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS usuarios_admin (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -312,7 +312,7 @@ def init_db():
         )
     ''')
 
-    # Movimentações de Caixa
+    # MovimentaÃ§Ãµes de Caixa
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS caixa_movimentacoes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -340,7 +340,7 @@ def init_db():
         )
     ''')
 
-    # Orçamentos Personalizados
+    # OrÃ§amentos Personalizados
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS orcamentos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -368,7 +368,7 @@ def init_db():
         )
     ''')
 
-    # Configurações Iniciais
+    # ConfiguraÃ§Ãµes Iniciais
     cursor.execute('SELECT COUNT(*) AS total FROM configuracoes')
     r_cfg = cursor.fetchone()
     total_cfg = r_cfg['total'] if isinstance(r_cfg, dict) or hasattr(r_cfg, 'keys') else r_cfg[0]
@@ -377,12 +377,12 @@ def init_db():
             INSERT INTO configuracoes (nome_grafica, whatsapp, chave_pix, banner_titulo, banner_subtitulo, aviso_topo, evolution_api_url, evolution_api_key, evolution_instance, validar_whatsapp_ativo)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
-            'Gráfica Rápida Express',
+            'GrÃ¡fica RÃ¡pida Express',
             '5511999998888',
             'pix@graficarapidaexpress.com.br',
-            'Sua Impressão Rápida, Sem Complicação!',
-            'Cartões de visita, panfletos, banners, adesivos e brindes com entrega expressa e qualidade profissional.',
-            '⚡ Atendimento Express: Pedidos feitos até as 12h ficam prontos no mesmo dia!',
+            'Sua ImpressÃ£o RÃ¡pida, Sem ComplicaÃ§Ã£o!',
+            'CartÃµes de visita, panfletos, banners, adesivos e brindes com entrega expressa e qualidade profissional.',
+            'âš¡ Atendimento Express: Pedidos feitos atÃ© as 12h ficam prontos no mesmo dia!',
             'https://api.evolution.com.br',
             'API_KEY_EVOLUTION_EXEMPLO',
             'grafica-express',
@@ -390,7 +390,7 @@ def init_db():
         ))
         conn.commit()
 
-    # Admin Padrão (admin / admin123)
+    # Admin PadrÃ£o (admin / admin123)
     cursor.execute('SELECT COUNT(*) AS total FROM usuarios_admin')
     r_adm = cursor.fetchone()
     total_adm = r_adm['total'] if isinstance(r_adm, dict) or hasattr(r_adm, 'keys') else r_adm[0]
@@ -408,14 +408,14 @@ def init_db():
     if total_prod == 0:
         produtos_padrao = [
             (
-                'Cartão de Visita Premium',
-                'Cartões',
-                'Impressione seus clientes com cartões de alta gramatura e verniz brilhante.',
+                'CartÃ£o de Visita Premium',
+                'CartÃµes',
+                'Impressione seus clientes com cartÃµes de alta gramatura e verniz brilhante.',
                 35.00,
                 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=600&auto=format&fit=crop&q=80',
                 json.dumps(['9 x 5 cm', '9 x 10 cm (Duplo/Dobrado)']),
                 json.dumps(['Couche 300g (Encorpado)', 'Couche 250g', 'Reciclato 240g']),
-                json.dumps(['Verniz UV Total Frente', 'Verniz Localizado + Laminação Fosca', 'Corte Reto Padrão', 'Cantos Arredondados']),
+                json.dumps(['Verniz UV Total Frente', 'Verniz Localizado + LaminaÃ§Ã£o Fosca', 'Corte Reto PadrÃ£o', 'Cantos Arredondados']),
                 json.dumps([
                     {'qtd': 100, 'preco': 35.00},
                     {'qtd': 500, 'preco': 65.00},
@@ -427,12 +427,12 @@ def init_db():
             (
                 'Panfletos & Folders Promocionais',
                 'Panfletos',
-                'Divulgue sua empresa com panfletos coloridos de alta definição.',
+                'Divulgue sua empresa com panfletos coloridos de alta definiÃ§Ã£o.',
                 50.00,
                 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=600&auto=format&fit=crop&q=80',
                 json.dumps(['A6 (10 x 14 cm)', 'A5 (14 x 20 cm)', 'A4 (21 x 29 cm)']),
                 json.dumps(['Couche 115g (Standard)', 'Couche 150g (Premium)', 'Offset 90g']),
-                json.dumps(['Impressão Frente (4x0)', 'Impressão Frente e Verso (4x4)', 'Dobra Central']),
+                json.dumps(['ImpressÃ£o Frente (4x0)', 'ImpressÃ£o Frente e Verso (4x4)', 'Dobra Central']),
                 json.dumps([
                     {'qtd': 500, 'preco': 90.00},
                     {'qtd': 1000, 'preco': 140.00},
@@ -442,14 +442,14 @@ def init_db():
                 1, 1
             ),
             (
-                'Banner em Lona com Ilhós / Bastão',
+                'Banner em Lona com IlhÃ³s / BastÃ£o',
                 'Banners',
-                'Alta durabilidade para fachadas, eventos, promoções e sinalização.',
+                'Alta durabilidade para fachadas, eventos, promoÃ§Ãµes e sinalizaÃ§Ã£o.',
                 60.00,
                 'https://images.unsplash.com/photo-1542744094-3a31b272c490?w=600&auto=format&fit=crop&q=80',
                 json.dumps(['60 x 90 cm', '80 x 120 cm', '100 x 150 cm', '200 x 100 cm']),
                 json.dumps(['Lona 440g Brilho (Alta Resistencia)', 'Lona 440g Fosca Anti-reflexo']),
-                json.dumps(['Bastão de Madeira + Cordão', 'Ilhós nos 4 Cantos', 'Ilhós a cada 50cm']),
+                json.dumps(['BastÃ£o de Madeira + CordÃ£o', 'IlhÃ³s nos 4 Cantos', 'IlhÃ³s a cada 50cm']),
                 json.dumps([
                     {'qtd': 1, 'preco': 60.00},
                     {'qtd': 3, 'preco': 150.00},
@@ -460,12 +460,12 @@ def init_db():
             (
                 'Adesivos & Etiquetas Vinil',
                 'Adesivos',
-                'Adesivos à prova d\'água cortados no formato do seu logotipo.',
+                'Adesivos Ã  prova d\'Ã¡gua cortados no formato do seu logotipo.',
                 45.00,
                 'https://images.unsplash.com/photo-1572375992501-4b0892d50c69?w=600&auto=format&fit=crop&q=80',
                 json.dumps(['3 x 3 cm', '5 x 5 cm', '7 x 7 cm', '10 x 10 cm']),
-                json.dumps(['Vinil Brilho Impermeável', 'Vinil Transparente', 'Vinil Fosco']),
-                json.dumps(['Corte Eletrônico Especial', 'Corte Quadrado/Retangular', 'Cartela sem Corte']),
+                json.dumps(['Vinil Brilho ImpermeÃ¡vel', 'Vinil Transparente', 'Vinil Fosco']),
+                json.dumps(['Corte EletrÃ´nico Especial', 'Corte Quadrado/Retangular', 'Cartela sem Corte']),
                 json.dumps([
                     {'qtd': 100, 'preco': 45.00},
                     {'qtd': 500, 'preco': 110.00},
@@ -474,14 +474,14 @@ def init_db():
                 1, 1
             ),
             (
-                'Talões & Blocos de Pedidos / Recibos',
-                'Talões',
+                'TalÃµes & Blocos de Pedidos / Recibos',
+                'TalÃµes',
                 'Blocos autocopiativos personalizados com a marca da sua empresa.',
                 75.00,
                 'https://images.unsplash.com/photo-1586075010923-2dd4570fb338?w=600&auto=format&fit=crop&q=80',
                 json.dumps(['1/4 de Folha (10 x 15 cm)', '1/2 Folha (15 x 21 cm)', 'A4 (21 x 29 cm)']),
-                json.dumps(['Sulfite 75g (1 Via)', 'Autocopiativo 2 Vias (Branco/Canário)', 'Autocopiativo 3 Vias']),
-                json.dumps(['Blocagem 50 Folhas', 'Numeração Seqüencial', 'Serrilha p/ Destaque']),
+                json.dumps(['Sulfite 75g (1 Via)', 'Autocopiativo 2 Vias (Branco/CanÃ¡rio)', 'Autocopiativo 3 Vias']),
+                json.dumps(['Blocagem 50 Folhas', 'NumeraÃ§Ã£o SeqÃ¼encial', 'Serrilha p/ Destaque']),
                 json.dumps([
                     {'qtd': 5, 'preco': 75.00},
                     {'qtd': 10, 'preco': 130.00},
@@ -492,12 +492,12 @@ def init_db():
             (
                 'Envelopes Personalizados',
                 'Envelopes',
-                'Envelopes de carta e ofício impressos com sua marca e dados.',
+                'Envelopes de carta e ofÃ­cio impressos com sua marca e dados.',
                 85.00,
                 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=600&auto=format&fit=crop&q=80',
-                json.dumps(['Saco A4 (24 x 34 cm)', 'Ofício (11 x 22 cm)', 'Carta (11 x 16 cm)']),
+                json.dumps(['Saco A4 (24 x 34 cm)', 'OfÃ­cio (11 x 22 cm)', 'Carta (11 x 16 cm)']),
                 json.dumps(['Offset 90g', 'Offset 120g Encorpado']),
-                json.dumps(['Impressão Frente', 'Aba Gomada / Fita Dupla Face']),
+                json.dumps(['ImpressÃ£o Frente', 'Aba Gomada / Fita Dupla Face']),
                 json.dumps([
                     {'qtd': 100, 'preco': 85.00},
                     {'qtd': 500, 'preco': 210.00},
@@ -517,13 +517,13 @@ def init_db():
     total_ins = r_ins['total'] if isinstance(r_ins, dict) or hasattr(r_ins, 'keys') else r_ins[0]
     if total_ins == 0:
         insumos_padrao = [
-            ('Papel Couche 300g (Folhas A3+)', 'Papéis', 450, 100, 'Folhas', 0.80),
-            ('Papel Couche 115g (Folhas A3+)', 'Papéis', 1200, 250, 'Folhas', 0.35),
-            ('Bobina de Lona 440g Brilho (1.60m)', 'Mídias Grandes', 85, 20, 'Metros', 12.50),
+            ('Papel Couche 300g (Folhas A3+)', 'PapÃ©is', 450, 100, 'Folhas', 0.80),
+            ('Papel Couche 115g (Folhas A3+)', 'PapÃ©is', 1200, 250, 'Folhas', 0.35),
+            ('Bobina de Lona 440g Brilho (1.60m)', 'MÃ­dias Grandes', 85, 20, 'Metros', 12.50),
             ('Bobina de Vinil Adesivo Brilho', 'Adesivos', 110, 30, 'Metros', 9.00),
             ('Toner Preto Alta Capacidade (CMYK)', 'Suprimentos', 4, 1, 'Unidades', 240.00),
             ('Toner Ciano / Magenta / Amarelo', 'Suprimentos', 6, 2, 'Kits', 480.00),
-            ('Bastões de Madeira para Banners', 'Acabamentos', 140, 30, 'Metros', 2.20)
+            ('BastÃµes de Madeira para Banners', 'Acabamentos', 140, 30, 'Metros', 2.20)
         ]
         for ins in insumos_padrao:
             cursor.execute('''
@@ -573,10 +573,10 @@ def send_evolution_whatsapp(numero, mensagem, custom_url=None, custom_key=None, 
         instance = (cfg.get('evolution_instance') or '').strip()
 
     if not api_url or not api_key or not instance:
-        print(f"[Evolution API Alert] Configurações incompletas da Evolution API.")
-        return False, "Configurações da Evolution API incompletas (URL, API Key e Instância são obrigatórios)."
+        print(f"[Evolution API Alert] ConfiguraÃ§Ãµes incompletas da Evolution API.")
+        return False, "ConfiguraÃ§Ãµes da Evolution API incompletas (URL, API Key e InstÃ¢ncia sÃ£o obrigatÃ³rios)."
 
-    # Sanitizar número (Apenas números ex: 5511999998888 ou 556596772226)
+    # Sanitizar nÃºmero (Apenas nÃºmeros ex: 5511999998888 ou 556596772226)
     num_limpo = ''.join(c for c in str(numero) if c.isdigit())
     if not num_limpo.startswith('55') and len(num_limpo) <= 11:
         num_limpo = '55' + num_limpo
@@ -620,7 +620,7 @@ def send_evolution_whatsapp(numero, mensagem, custom_url=None, custom_key=None, 
 
     return False, ultimo_erro
 
-# --- HELPER DE AUTENTICAÇÃO ---
+# --- HELPER DE AUTENTICAÃ‡ÃƒO ---
 
 def get_current_client(token):
     if not token:
@@ -652,7 +652,7 @@ def index():
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-# --- APIS DE AUTENTICAÇÃO DO CLIENTE & EVOLUTION API WHATSAPP ---
+# --- APIS DE AUTENTICAÃ‡ÃƒO DO CLIENTE & EVOLUTION API WHATSAPP ---
 
 @app.route('/api/auth/cliente/cadastrar', methods=['POST'])
 def auth_cliente_cadastrar():
@@ -663,14 +663,14 @@ def auth_cliente_cadastrar():
     senha = data.get('senha', '')
 
     if not nome or not email or not telefone or not senha:
-        return jsonify({'error': 'Todos os campos são obrigatórios!'}), 400
+        return jsonify({'error': 'Todos os campos sÃ£o obrigatÃ³rios!'}), 400
 
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute('SELECT id FROM clientes WHERE email = ?', (email,))
     if cursor.fetchone():
         conn.close()
-        return jsonify({'error': 'Já existe uma conta cadastrada com este E-mail!'}), 400
+        return jsonify({'error': 'JÃ¡ existe uma conta cadastrada com este E-mail!'}), 400
 
     cursor.execute('SELECT validar_whatsapp_ativo FROM configuracoes LIMIT 1')
     cfg_row = cursor.fetchone()
@@ -691,7 +691,7 @@ def auth_cliente_cadastrar():
     conn.close()
 
     if validar_ativo == 1:
-        msg = f"🔒 *Gráfica Rápida Express*\nOlá {nome}! Seu código de validação de cadastro é: *{codigo_otp}*\n\nDigite este código no site para ativar sua conta!"
+        msg = f"ðŸ”’ *GrÃ¡fica RÃ¡pida Express*\nOlÃ¡ {nome}! Seu cÃ³digo de validaÃ§Ã£o de cadastro Ã©: *{codigo_otp}*\n\nDigite este cÃ³digo no site para ativar sua conta!"
         sucesso, msg_status = send_evolution_whatsapp(telefone, msg)
         
         res_data = {
@@ -699,7 +699,7 @@ def auth_cliente_cadastrar():
             'cliente_id': cliente_id,
             'email': email,
             'telefone': telefone,
-            'message': f"Código de validação enviado para o seu WhatsApp ({telefone})!"
+            'message': f"CÃ³digo de validaÃ§Ã£o enviado para o seu WhatsApp ({telefone})!"
         }
         if not sucesso:
             res_data['codigo_dev'] = codigo_otp
@@ -721,7 +721,7 @@ def auth_cliente_validar_codigo():
     codigo = str(data.get('codigo', '')).strip()
 
     if not codigo or (not cliente_id and not email):
-        return jsonify({'error': 'Informe o código de validação e o ID/E-mail do cliente.'}), 400
+        return jsonify({'error': 'Informe o cÃ³digo de validaÃ§Ã£o e o ID/E-mail do cliente.'}), 400
 
     conn = get_db()
     cursor = conn.cursor()
@@ -733,11 +733,11 @@ def auth_cliente_validar_codigo():
 
     if not row:
         conn.close()
-        return jsonify({'error': 'Cliente não encontrado.'}), 404
+        return jsonify({'error': 'Cliente nÃ£o encontrado.'}), 404
 
     if str(row['codigo_validacao']).strip() != codigo:
         conn.close()
-        return jsonify({'error': 'Código de validação incorreto!'}), 400
+        return jsonify({'error': 'CÃ³digo de validaÃ§Ã£o incorreto!'}), 400
 
     token_sessao = uuid.uuid4().hex
     cursor.execute('''
@@ -771,18 +771,18 @@ def auth_cliente_reenviar_codigo():
 
     if not row:
         conn.close()
-        return jsonify({'error': 'Cliente não encontrado.'}), 404
+        return jsonify({'error': 'Cliente nÃ£o encontrado.'}), 404
 
     novo_codigo = str(random.randint(100000, 999999))
     cursor.execute('UPDATE clientes SET codigo_validacao = ? WHERE id = ?', (novo_codigo, row['id']))
     conn.commit()
     conn.close()
 
-    msg = f"🔒 *Gráfica Rápida Express*\nSeu novo código de validação de cadastro é: *{novo_codigo}*"
+    msg = f"ðŸ”’ *GrÃ¡fica RÃ¡pida Express*\nSeu novo cÃ³digo de validaÃ§Ã£o de cadastro Ã©: *{novo_codigo}*"
     sucesso, msg_status = send_evolution_whatsapp(row['telefone'], msg)
 
     res_data = {
-        'message': 'Novo código de validação enviado com sucesso!'
+        'message': 'Novo cÃ³digo de validaÃ§Ã£o enviado com sucesso!'
     }
     if not sucesso:
         res_data['codigo_dev'] = novo_codigo
@@ -812,7 +812,7 @@ def auth_cliente_login():
             'requer_validacao': True,
             'email': row['email'],
             'telefone': row['telefone'],
-            'error': 'Sua conta ainda não foi ativada. Digite o código de validação do WhatsApp.'
+            'error': 'Sua conta ainda nÃ£o foi ativada. Digite o cÃ³digo de validaÃ§Ã£o do WhatsApp.'
         }), 403
 
     token_sessao = uuid.uuid4().hex
@@ -831,10 +831,10 @@ def auth_cliente_me():
     token = request.headers.get('X-Client-Token')
     cli = get_current_client(token)
     if not cli:
-        return jsonify({'error': 'Sessão expirada. Faça login novamente.'}), 401
+        return jsonify({'error': 'SessÃ£o expirada. FaÃ§a login novamente.'}), 401
     return jsonify(cli)
 
-# --- APIS DE AUTENTICAÇÃO DO ADMINISTRADOR & TESTE EVOLUTION API ---
+# --- APIS DE AUTENTICAÃ‡ÃƒO DO ADMINISTRADOR & TESTE EVOLUTION API ---
 
 @app.route('/api/auth/admin/login', methods=['POST'])
 def auth_admin_login():
@@ -849,7 +849,7 @@ def auth_admin_login():
 
     if not row or not check_password_hash(row['senha_hash'], senha):
         conn.close()
-        return jsonify({'error': 'Usuário ou senha administrativos inválidos!'}), 401
+        return jsonify({'error': 'UsuÃ¡rio ou senha administrativos invÃ¡lidos!'}), 401
 
     token_sessao = uuid.uuid4().hex
     cursor.execute('UPDATE usuarios_admin SET token_sessao = ? WHERE id = ?', (token_sessao, row['id']))
@@ -888,7 +888,7 @@ def testar_evolution_api():
     whatsapp_grafica = row['whatsapp'] if row else '5511999998888'
     conn.close()
 
-    msg = "🚀 *Gráfica Rápida Express*\nTeste de conexão com a Evolution API realizado com sucesso!"
+    msg = "ðŸš€ *GrÃ¡fica RÃ¡pida Express*\nTeste de conexÃ£o com a Evolution API realizado com sucesso!"
     
     sucesso, mensagem_retorno = send_evolution_whatsapp(
         whatsapp_grafica, 
@@ -978,7 +978,7 @@ def get_cliente_meus_pedidos():
     conn.close()
     return jsonify(pedidos)
 
-# --- PRODUTOS E CONFIGURAÇÕES ---
+# --- PRODUTOS E CONFIGURAÃ‡Ã•ES ---
 
 @app.route('/api/config', methods=['GET', 'PUT'])
 def api_config():
@@ -1013,7 +1013,7 @@ def api_config():
         ))
         conn.commit()
         conn.close()
-        return jsonify({'message': 'Configurações e Evolution API salvas!'})
+        return jsonify({'message': 'ConfiguraÃ§Ãµes e Evolution API salvas!'})
 
 @app.route('/api/produtos', methods=['GET', 'POST'])
 def api_produtos():
@@ -1100,7 +1100,7 @@ def upload_file():
         return jsonify({'error': 'Nenhum arquivo enviado'}), 400
     file = request.files['file']
     if file.filename == '':
-        return jsonify({'error': 'Nome de arquivo inválido'}), 400
+        return jsonify({'error': 'Nome de arquivo invÃ¡lido'}), 400
     
     filename = f"{uuid.uuid4().hex[:8]}_{secure_filename(file.filename)}"
     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -1152,9 +1152,9 @@ def api_pedidos():
         cupom_codigo = data.get('cupom')
         
         if not cliente.get('nome') or not cliente.get('telefone'):
-            return jsonify({'error': 'Nome e WhatsApp do cliente são obrigatórios.'}), 400
+            return jsonify({'error': 'Nome e WhatsApp do cliente sÃ£o obrigatÃ³rios.'}), 400
         if not itens:
-            return jsonify({'error': 'O carrinho está vazio.'}), 400
+            return jsonify({'error': 'O carrinho estÃ¡ vazio.'}), 400
             
         cliente_id = None
         if cliente.get('email'):
@@ -1174,7 +1174,7 @@ def api_pedidos():
         observacoes = data.get('observacoes', '')
         
         status_pag = 'Aprovado' if metodo_pagamento == 'Cartao' else 'Aguardando Pagamento'
-        status_prod = 'Em Análise de Arte' if status_pag == 'Aprovado' else 'Aguardando Pagamento'
+        status_prod = 'Em AnÃ¡lise de Arte' if status_pag == 'Aprovado' else 'Aguardando Pagamento'
 
         cursor.execute('''
             INSERT INTO pedidos (
@@ -1216,7 +1216,7 @@ def api_pedidos():
         conn.close()
 
         # Notificar novo pedido no WhatsApp do cliente via Evolution API
-        msg_cliente = f"🛍️ *Gráfica Rápida Express*\nOlá {cliente.get('nome')}! Seu pedido *{codigo_pedido}* foi recebido com sucesso!\nTotal: R$ {total:.2f}\nStatus: {status_prod}"
+        msg_cliente = f"ðŸ›ï¸ *GrÃ¡fica RÃ¡pida Express*\nOlÃ¡ {cliente.get('nome')}! Seu pedido *{codigo_pedido}* foi recebido com sucesso!\nTotal: R$ {total:.2f}\nStatus: {status_prod}"
         send_evolution_whatsapp(cliente.get('telefone'), msg_cliente)
 
         return jsonify({
@@ -1241,7 +1241,7 @@ def get_pedido_by_codigo(codigo):
     row = cursor.fetchone()
     if not row:
         conn.close()
-        return jsonify({'error': 'Pedido não encontrado'}), 404
+        return jsonify({'error': 'Pedido nÃ£o encontrado'}), 404
         
     ped = dict(row)
     cursor.execute('SELECT * FROM itens_pedido WHERE pedido_id = ?', (ped['id'],))
@@ -1266,7 +1266,7 @@ def update_pedido_status(pedido_id):
     ped = cursor.fetchone()
     if not ped:
         conn.close()
-        return jsonify({'error': 'Pedido não encontrado'}), 404
+        return jsonify({'error': 'Pedido nÃ£o encontrado'}), 404
         
     ped_dict = dict(ped)
     
@@ -1287,14 +1287,14 @@ def update_pedido_status(pedido_id):
     conn.commit()
     conn.close()
 
-    # Notificar alteração de status no WhatsApp
+    # Notificar alteraÃ§Ã£o de status no WhatsApp
     if status_producao:
-        msg_update = f"📦 *Gráfica Rápida Express*\nSeu pedido *{ped_dict['codigo_pedido']}* teve o status atualizado para: *{status_producao}*!"
+        msg_update = f"ðŸ“¦ *GrÃ¡fica RÃ¡pida Express*\nSeu pedido *{ped_dict['codigo_pedido']}* teve o status atualizado para: *{status_producao}*!"
         send_evolution_whatsapp(ped_dict['cliente_telefone'], msg_update)
 
     return jsonify({'message': 'Status do pedido atualizado!'})
 
-# --- ESTOQUE, ORÇAMENTOS E CUPONS ---
+# --- ESTOQUE, ORÃ‡AMENTOS E CUPONS ---
 
 @app.route('/api/estoque', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def api_estoque():
@@ -1358,10 +1358,10 @@ def api_orcamentos():
         # Send WhatsApp message
         telefone = data.get('cliente_telefone')
         if telefone:
-            msg_cliente = f"📋 *Gráfica Rápida Express*\nOlá {data.get('cliente_nome')}! Sua solicitação de orçamento *{codigo}* foi recebida com sucesso!\nDetalhes: {data.get('descricao')}\nEm breve entraremos em contato com o valor!"
+            msg_cliente = f"ðŸ“‹ *GrÃ¡fica RÃ¡pida Express*\nOlÃ¡ {data.get('cliente_nome')}! Sua solicitaÃ§Ã£o de orÃ§amento *{codigo}* foi recebida com sucesso!\nDetalhes: {data.get('descricao')}\nEm breve entraremos em contato com o valor!"
             send_evolution_whatsapp(telefone, msg_cliente)
 
-        return jsonify({'message': 'Orçamento criado!', 'id': orc_id, 'codigo': codigo}), 201
+        return jsonify({'message': 'OrÃ§amento criado!', 'id': orc_id, 'codigo': codigo}), 201
 
 @app.route('/api/orcamentos/<int:orc_id>', methods=['PUT', 'DELETE'])
 def api_orcamento_edit(orc_id):
@@ -1381,13 +1381,13 @@ def api_orcamento_edit(orc_id):
         ''', (data.get('cliente_nome'), data.get('cliente_telefone'), data.get('descricao'), float(data.get('valor_estimado', 0)), data.get('status', 'Pendente'), orc_id))
         conn.commit()
         conn.close()
-        return jsonify({'message': 'Orçamento atualizado com sucesso!'})
+        return jsonify({'message': 'OrÃ§amento atualizado com sucesso!'})
 
     elif request.method == 'DELETE':
         cursor.execute('DELETE FROM orcamentos WHERE id = ?', (orc_id,))
         conn.commit()
         conn.close()
-        return jsonify({'message': 'Orçamento excluído com sucesso!'})
+        return jsonify({'message': 'OrÃ§amento excluÃ­do com sucesso!'})
 
 @app.route('/api/cupons', methods=['GET', 'POST', 'DELETE'])
 def api_cupons():
@@ -1437,11 +1437,11 @@ def validar_cupom():
     conn.close()
 
     if not row:
-        return jsonify({'valid': False, 'message': 'Cupom inválido ou expirado.'}), 404
+        return jsonify({'valid': False, 'message': 'Cupom invÃ¡lido ou expirado.'}), 404
         
     cupom = dict(row)
     if subtotal < cupom['valor_minimo']:
-        return jsonify({'valid': False, 'message': f"Valor mínimo do cupom é R$ {cupom['valor_minimo']:.2f}"}), 400
+        return jsonify({'valid': False, 'message': f"Valor mÃ­nimo do cupom Ã© R$ {cupom['valor_minimo']:.2f}"}), 400
 
     if cupom['usos_atuais'] >= cupom['limite_usos']:
         return jsonify({'valid': False, 'message': 'Limite de uso deste cupom esgotado.'}), 400
@@ -1508,7 +1508,7 @@ def add_caixa_movimento():
     
     conn.commit()
     conn.close()
-    return jsonify({'message': 'Movimentação registrada!'})
+    return jsonify({'message': 'MovimentaÃ§Ã£o registrada!'})
 
 @app.route('/api/clientes/<int:cliente_id>', methods=['PUT'])
 def edit_cliente(cliente_id):
@@ -1524,7 +1524,7 @@ def edit_cliente(cliente_id):
     cpf_cnpj = data.get('cpf_cnpj', '')
 
     if not nome or not email or not telefone:
-        return jsonify({'error': 'Nome, E-mail e Telefone são obrigatórios'}), 400
+        return jsonify({'error': 'Nome, E-mail e Telefone sÃ£o obrigatÃ³rios'}), 400
 
     conn = get_db()
     cursor = conn.cursor()
@@ -1532,7 +1532,7 @@ def edit_cliente(cliente_id):
     cursor.execute('SELECT id FROM clientes WHERE email = ? AND id != ?', (email, cliente_id))
     if cursor.fetchone():
         conn.close()
-        return jsonify({'error': 'E-mail já está em uso por outro cliente'}), 400
+        return jsonify({'error': 'E-mail jÃ¡ estÃ¡ em uso por outro cliente'}), 400
 
     cursor.execute('''
         UPDATE clientes 
@@ -1555,7 +1555,7 @@ def delete_cliente(cliente_id):
     cursor.execute('DELETE FROM clientes WHERE id = ?', (cliente_id,))
     conn.commit()
     conn.close()
-    return jsonify({'message': 'Cliente excluído com sucesso!'})
+    return jsonify({'message': 'Cliente excluÃ­do com sucesso!'})
 
 @app.route('/api/clientes', methods=['GET'])
 def get_clientes():
@@ -1591,7 +1591,7 @@ def get_dashboard_metrics():
     r1 = cursor.fetchone()
     total_pedidos = int(r1[0]) if r1 and r1[0] is not None else 0
     
-    cursor.execute("SELECT COUNT(*) FROM pedidos WHERE status_producao IN ('Aguardando Pagamento', 'Em Análise de Arte', 'Em Impressão', 'Acabamento & Corte')")
+    cursor.execute("SELECT COUNT(*) FROM pedidos WHERE status_producao IN ('Aguardando Pagamento', 'Em AnÃ¡lise de Arte', 'Em ImpressÃ£o', 'Acabamento & Corte')")
     r2 = cursor.fetchone()
     pedidos_em_producao = int(r2[0]) if r2 and r2[0] is not None else 0
     
@@ -1682,11 +1682,11 @@ def api_chat_post(codigo):
         conn = get_db()
         cursor = conn.cursor()
         
-        # Lógica de Notificação de 15 Minutos
+        # LÃ³gica de NotificaÃ§Ã£o de 15 Minutos
         enviar_notificacao = False
         from datetime import datetime, timedelta
         
-        # 1. Busca a última mensagem do destinatário (para ver se ele está online/ativo)
+        # 1. Busca a Ãºltima mensagem do destinatÃ¡rio (para ver se ele estÃ¡ online/ativo)
         tipo_destinatario = 'cliente' if remetente_tipo == 'admin' else 'admin'
         if cursor.is_postgres:
             cursor.execute("SELECT data_envio FROM mensagens_chat WHERE referencia_codigo = %s AND remetente_tipo = %s ORDER BY id DESC LIMIT 1", (codigo, tipo_destinatario))
@@ -1694,7 +1694,7 @@ def api_chat_post(codigo):
             cursor.execute("SELECT data_envio FROM mensagens_chat WHERE referencia_codigo = ? AND remetente_tipo = ? ORDER BY id DESC LIMIT 1", (codigo, tipo_destinatario))
         last_destinatario = cursor.fetchone()
         
-        # 2. Busca a última mensagem do remetente (para ver se já notificamos há pouco tempo)
+        # 2. Busca a Ãºltima mensagem do remetente (para ver se jÃ¡ notificamos hÃ¡ pouco tempo)
         if cursor.is_postgres:
             cursor.execute("SELECT data_envio FROM mensagens_chat WHERE referencia_codigo = %s AND remetente_tipo = %s ORDER BY id DESC LIMIT 1 OFFSET 1", (codigo, remetente_tipo))
         else:
@@ -1721,11 +1721,11 @@ def api_chat_post(codigo):
 
         if enviar_notificacao:
             if remetente_tipo == 'admin' and telefone:
-                # O admin não envia link do site para ele responder se for um chat GERAL
+                # O admin nÃ£o envia link do site para ele responder se for um chat GERAL
                 if codigo == 'GERAL':
-                    msg_wpp = f"💬 *Gráfica Rápida Express*\n\n_{mensagem}_"
+                    msg_wpp = f"ðŸ’¬ *GrÃ¡fica RÃ¡pida Express*\n\n_{mensagem}_"
                 else:
-                    msg_wpp = f"💬 *Gráfica Rápida Express*\nNova mensagem sobre o {codigo}:\n\n_{mensagem}_\n\nAcesse o site para responder!"
+                    msg_wpp = f"ðŸ’¬ *GrÃ¡fica RÃ¡pida Express*\nNova mensagem sobre o {codigo}:\n\n_{mensagem}_\n\nAcesse o site para responder!"
                 send_evolution_whatsapp(telefone, msg_wpp)
                 
             if remetente_tipo == 'cliente':
@@ -1735,7 +1735,7 @@ def api_chat_post(codigo):
                 cfg = cursor.fetchone()
                 conn.close()
                 if cfg and dict(cfg).get('whatsapp'):
-                    msg_wpp_admin = f"🔔 *Alerta de Mensagem*\nO cliente {remetente_nome} enviou uma mensagem sobre o {codigo}:\n\n_{mensagem}_\n\nAcesse o painel para responder!"
+                    msg_wpp_admin = f"ðŸ”” *Alerta de Mensagem*\nO cliente {remetente_nome} enviou uma mensagem sobre o {codigo}:\n\n_{mensagem}_\n\nAcesse o painel para responder!"
                     send_evolution_whatsapp(dict(cfg)['whatsapp'], msg_wpp_admin)
                     
         return jsonify({'message': 'Mensagem enviada'})
@@ -1746,8 +1746,8 @@ def api_chat_post(codigo):
 @app.route('/api/webhook/evolution', methods=['POST'])
 def webhook_evolution():
     # Recebe mensagens do cliente pelo WhatsApp e joga no chat do pedido
-    # OBS: O Evolution API manda payloads diferentes dependendo da versão, 
-    # estamos usando um genérico que tenta encontrar o remoteJid e text.
+    # OBS: O Evolution API manda payloads diferentes dependendo da versÃ£o, 
+    # estamos usando um genÃ©rico que tenta encontrar o remoteJid e text.
     try:
         data = request.json
         if not data:
@@ -1766,7 +1766,7 @@ def webhook_evolution():
         # Pega o telefone (tira o @s.whatsapp.net)
         telefone = remote_jid.split('@')[0]
         
-        # Ignora mensagens de nós mesmos (se o remetente for fromMe = true, embora dependa do payload)
+        # Ignora mensagens de nÃ³s mesmos (se o remetente for fromMe = true, embora dependa do payload)
         if data.get('data', {}).get('key', {}).get('fromMe'):
             return jsonify({'status': 'ignorado, fromMe'}), 200
 
@@ -1786,9 +1786,9 @@ def webhook_evolution():
         ''', (codigo, telefone, text))
         conn.commit()
 
-        # 2. Automação do Bot
+        # 2. AutomaÃ§Ã£o do Bot
         if codigo != "GERAL":
-            # Tentar achar o status do pedido/orçamento
+            # Tentar achar o status do pedido/orÃ§amento
             prefix = codigo.split('-')[0]
             status_msg = ""
             if prefix == "#PED":
@@ -1796,23 +1796,23 @@ def webhook_evolution():
                 row = cursor.fetchone()
                 if row:
                     row_dict = dict(row) if hasattr(row, 'keys') else {'status_producao': row[0], 'total': row[1]}
-                    status_msg = f"Seu pedido {codigo} está atualmente: *{row_dict['status_producao']}*.\nValor total: R$ {row_dict['total']:.2f}".replace('.', ',')
+                    status_msg = f"Seu pedido {codigo} estÃ¡ atualmente: *{row_dict['status_producao']}*.\nValor total: R$ {row_dict['total']:.2f}".replace('.', ',')
             elif prefix == "#ORC":
                 cursor.execute('SELECT status, valor_estimado FROM orcamentos WHERE codigo_orcamento = ?', (codigo,))
                 row = cursor.fetchone()
                 if row:
                     row_dict = dict(row) if hasattr(row, 'keys') else {'status': row[0], 'valor_estimado': row[1]}
-                    status_msg = f"Seu orçamento {codigo} está: *{row_dict['status']}*.\nValor estimado: R$ {row_dict['valor_estimado']:.2f}".replace('.', ',')
+                    status_msg = f"Seu orÃ§amento {codigo} estÃ¡: *{row_dict['status']}*.\nValor estimado: R$ {row_dict['valor_estimado']:.2f}".replace('.', ',')
             
             if status_msg:
-                bot_reply = f"🤖 *Assistente Automático*\nOlá! Encontrei as informações solicitadas:\n\n{status_msg}\n\nSe precisar falar com um humano, mande outra mensagem."
+                bot_reply = f"ðŸ¤– *Assistente AutomÃ¡tico*\nOlÃ¡! Encontrei as informaÃ§Ãµes solicitadas:\n\n{status_msg}\n\nSe precisar falar com um humano, mande outra mensagem."
                 send_evolution_whatsapp(telefone, bot_reply)
                 # Opcional: salvar a resposta do bot no chat
                 cursor.execute("INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem) VALUES (?, 'admin', 'Assistente Virtual', ?, ?)", (codigo, telefone, bot_reply))
                 conn.commit()
         else:
-            # Fluxo sem código específico (Fallback)
-            # Verifica a última mensagem que nós (admin/bot) enviamos para esse telefone nos últimos 30 min
+            # Fluxo sem cÃ³digo especÃ­fico (Fallback)
+            # Verifica a Ãºltima mensagem que nÃ³s (admin/bot) enviamos para esse telefone nos Ãºltimos 30 min
             if cursor.is_postgres:
                 cursor.execute("SELECT data_envio FROM mensagens_chat WHERE telefone_cliente = %s AND remetente_tipo = 'admin' ORDER BY id DESC LIMIT 1", (telefone,))
             else:
@@ -1835,7 +1835,7 @@ def webhook_evolution():
                         pass
             
             if enviar_saudacao:
-                fallback_msg = "🤖 *Assistente Automático*\nOlá! Recebemos sua mensagem. Se deseja saber sobre um pedido, digite o código (ex: #PED-123).\n\nCaso contrário, aguarde um instante que um atendente humano já falará com você!"
+                fallback_msg = "ðŸ¤– *Assistente AutomÃ¡tico*\nOlÃ¡! Recebemos sua mensagem. Se deseja saber sobre um pedido, digite o cÃ³digo (ex: #PED-123).\n\nCaso contrÃ¡rio, aguarde um instante que um atendente humano jÃ¡ falarÃ¡ com vocÃª!"
                 send_evolution_whatsapp(telefone, fallback_msg)
                 cursor.execute("INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem) VALUES (?, 'admin', 'Assistente Virtual', ?, ?)", (codigo, telefone, fallback_msg))
                 conn.commit()
@@ -1888,7 +1888,7 @@ def api_chat_inbox():
             "data_envio": r[4], "lida": r[5], "remetente_tipo": r[6]
         }
         
-        # Pega a contagem de n�o lidas para este chat
+        # Pega a contagem de nao lidas para este chat
         if cursor.is_postgres:
             cursor.execute("SELECT COUNT(*) FROM mensagens_chat WHERE referencia_codigo = %s AND telefone_cliente = %s AND remetente_tipo = %s AND lida = 0", (d["referencia_codigo"], d["telefone_cliente"], "cliente"))
         else:
