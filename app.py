@@ -339,6 +339,7 @@ def init_db():
             data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    safe_add_column(cursor, conn, 'orcamentos', 'cliente_id INTEGER')
 
     # Cupons de Desconto
     cursor.execute('''
@@ -930,7 +931,19 @@ def api_cliente_artes():
         conn.commit()
         conn.close()
         return jsonify({'message': 'Arte removida!'})
+@app.route('/api/cliente/orcamentos', methods=['GET'])
+def get_cliente_meus_orcamentos():
+    token = request.headers.get('X-Client-Token')
+    cli = get_current_client(token)
+    if not cli:
+        return jsonify({'error': 'Acesso negado.'}), 401
 
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM orcamentos WHERE cliente_id = ? ORDER BY id DESC', (cli['id'],))
+    rows = cursor.fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
 @app.route('/api/cliente/pedidos', methods=['GET'])
 def get_cliente_meus_pedidos():
     token = request.headers.get('X-Client-Token')
@@ -1321,12 +1334,19 @@ def api_orcamentos():
         data = request.json
         codigo = f"#ORC-{datetime.now().strftime('%m%d')}{uuid.uuid4().hex[:4].upper()}"
         cursor.execute('''
-            INSERT INTO orcamentos (codigo_orcamento, cliente_nome, cliente_telefone, descricao, valor_estimado, status)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (codigo, data.get('cliente_nome'), data.get('cliente_telefone'), data.get('descricao'), float(data.get('valor_estimado', 0)), 'Pendente'))
+            INSERT INTO orcamentos (codigo_orcamento, cliente_id, cliente_nome, cliente_telefone, descricao, valor_estimado, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (codigo, data.get('cliente_id'), data.get('cliente_nome'), data.get('cliente_telefone'), data.get('descricao'), float(data.get('valor_estimado', 0)), 'Pendente'))
         conn.commit()
         orc_id = cursor.lastrowid
         conn.close()
+
+        # Send WhatsApp message
+        telefone = data.get('cliente_telefone')
+        if telefone:
+            msg_cliente = f"📋 *Gráfica Rápida Express*\nOlá {data.get('cliente_nome')}! Sua solicitação de orçamento *{codigo}* foi recebida com sucesso!\nDetalhes: {data.get('descricao')}\nEm breve entraremos em contato com o valor!"
+            send_evolution_whatsapp(telefone, msg_cliente)
+
         return jsonify({'message': 'Orçamento criado!', 'id': orc_id, 'codigo': codigo}), 201
 
 @app.route('/api/orcamentos/<int:orc_id>', methods=['PUT', 'DELETE'])

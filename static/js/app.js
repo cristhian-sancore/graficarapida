@@ -440,47 +440,84 @@ async function carregarDadosPortalCliente() {
   if (!state.clienteLogado) return;
 
   try {
-    const res = await fetch('/api/cliente/pedidos', {
+    const resPeds = await fetch('/api/cliente/pedidos', {
       headers: { 'X-Client-Token': state.clientToken }
     });
-    const peds = await res.json();
+    const peds = await resPeds.json();
+    
+    const resOrcs = await fetch('/api/cliente/orcamentos', {
+      headers: { 'X-Client-Token': state.clientToken }
+    });
+    const orcs = await resOrcs.json();
+
     const container = document.getElementById('portal-pedidos-lista');
 
-    if (peds.length === 0) {
-      container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px;">Você ainda não possui pedidos cadastrados. Faça sua primeira compra na loja!</div>';
+    if (peds.length === 0 && orcs.length === 0) {
+      container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px;">Você ainda não possui pedidos ou orçamentos cadastrados. Faça sua primeira compra na loja!</div>';
       return;
     }
 
-    container.innerHTML = peds.map(p => `
-      <div class="table-wrap" style="padding: 20px; margin-bottom: 20px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-          <div>
-            <strong style="font-size: 1.1rem;">${p.codigo_pedido}</strong>
-            <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 10px;">${new Date(p.data_criacao).toLocaleDateString('pt-BR')}</span>
+    let html = '';
+
+    if (peds.length > 0) {
+      html += '<h3 style="margin-top: 0; margin-bottom: 15px; color: var(--primary);">Meus Pedidos</h3>';
+      html += peds.map(p => `
+        <div class="table-wrap" style="padding: 20px; margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div>
+              <strong style="font-size: 1.1rem;">${p.codigo_pedido}</strong>
+              <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 10px;">${new Date(p.data_criacao).toLocaleDateString('pt-BR')}</span>
+            </div>
+            <div>
+              <span class="badge ${p.status_pagamento === 'Aprovado' ? 'badge-success' : 'badge-warning'}">${p.status_pagamento}</span>
+              <span class="badge badge-info">${p.status_producao}</span>
+            </div>
           </div>
-          <div>
-            <span class="badge ${p.status_pagamento === 'Aprovado' ? 'badge-success' : 'badge-warning'}">${p.status_pagamento}</span>
-            <span class="badge badge-info">${p.status_producao}</span>
+
+          <ul style="padding-left: 20px; margin-bottom: 14px; font-size: 0.9rem;">
+            ${p.itens.map(i => `<li>${i.quantidade}x ${i.produto_nome} (${i.tamanho}, ${i.papel}) - R$ ${i.preco_total.toFixed(2).replace('.', ',')}</li>`).join('')}
+          </ul>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 12px;">
+            <div>Total: <strong style="font-size: 1.2rem; color: var(--primary);">R$ ${p.total.toFixed(2).replace('.', ',')}</strong></div>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn btn-secondary btn-sm" onclick="repetirPedidoCliente(${p.id})">
+                <i class="fa-solid fa-rotate-right"></i> Pedir Novamente
+              </button>
+              <button class="btn btn-primary btn-sm" onclick="consultarPedidoCodigo('${p.codigo_pedido}')">
+                <i class="fa-solid fa-truck-fast"></i> Rastrear
+              </button>
+            </div>
           </div>
         </div>
+      `).join('');
+    }
 
-        <ul style="padding-left: 20px; margin-bottom: 14px; font-size: 0.9rem;">
-          ${p.itens.map(i => `<li>${i.quantidade}x ${i.produto_nome} (${i.tamanho}, ${i.papel}) - R$ ${i.preco_total.toFixed(2).replace('.', ',')}</li>`).join('')}
-        </ul>
-
-        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 12px;">
-          <div>Total: <strong style="font-size: 1.2rem; color: var(--primary);">R$ ${p.total.toFixed(2).replace('.', ',')}</strong></div>
-          <div style="display: flex; gap: 10px;">
-            <button class="btn btn-secondary btn-sm" onclick="repetirPedidoCliente(${p.id})">
-              <i class="fa-solid fa-rotate-right"></i> Pedir Novamente
-            </button>
-            <button class="btn btn-primary btn-sm" onclick="consultarPedidoCodigo('${p.codigo_pedido}')">
-              <i class="fa-solid fa-truck-fast"></i> Rastrear
-            </button>
+    if (orcs.length > 0) {
+      html += '<h3 style="margin-top: 20px; margin-bottom: 15px; color: var(--primary);">Meus Orçamentos</h3>';
+      html += orcs.map(o => `
+        <div class="table-wrap" style="padding: 20px; margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div>
+              <strong style="font-size: 1.1rem;">${o.codigo_orcamento}</strong>
+              <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 10px;">${new Date(o.data_criacao).toLocaleDateString('pt-BR')}</span>
+            </div>
+            <div>
+              <span class="badge ${o.status === 'Aprovado' ? 'badge-success' : o.status === 'Rejeitado' ? 'badge-danger' : o.status === 'Concluído' ? 'badge-info' : 'badge-warning'}">${o.status}</span>
+            </div>
+          </div>
+          <p style="font-size: 0.95rem; margin-bottom: 10px; color: var(--text-color);">${o.descricao}</p>
+          <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 12px;">
+            <div>Valor Estimado: <strong style="font-size: 1.1rem; color: var(--primary);">R$ ${o.valor_estimado.toFixed(2).replace('.', ',')}</strong></div>
+            <a href="https://wa.me/${(state.config.whatsapp || '').replace(/\D/g, '')}?text=Olá! Gostaria de falar sobre o meu orçamento ${o.codigo_orcamento}." target="_blank" class="btn btn-secondary btn-sm" style="color: #25d366;">
+              <i class="fa-brands fa-whatsapp"></i> Falar com Atendimento
+            </a>
           </div>
         </div>
-      </div>
-    `).join('');
+      `).join('');
+    }
+
+    container.innerHTML = html;
   } catch (err) {
     console.error('Erro portal cliente:', err);
   }
@@ -595,6 +632,7 @@ async function solicitarOrcamentoCliente(e) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        cliente_id: state.clienteLogado ? state.clienteLogado.id : null,
         cliente_nome: state.clienteLogado ? state.clienteLogado.nome : 'Cliente Site',
         cliente_telefone: state.clienteLogado ? state.clienteLogado.telefone : '',
         descricao: desc,
