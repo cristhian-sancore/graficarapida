@@ -1370,7 +1370,7 @@ async function loadAdminPedidos() {
             <button onclick="abrirChatWidget('${p.codigo_pedido}', '${p.cliente_telefone}', '${p.cliente_nome}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Chat Interno">
               <i class="fa-solid fa-comments"></i>
             </button>
-            <button onclick="abrirConversaInterna('${p.codigo_pedido}', '${p.cliente_telefone}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="WhatsApp Interno">
+            <button onclick="abrirConversaInterna('${p.cliente_telefone}', '${p.cliente_nome}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="WhatsApp Interno">
               <i class="fa-brands fa-whatsapp"></i>
             </button>
           </div>
@@ -1582,7 +1582,7 @@ async function loadAdminOrcamentos() {
           <button onclick="abrirChatWidget('${o.codigo_orcamento}', '${o.cliente_telefone}', '${o.cliente_nome}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Chat Interno">
             <i class="fa-solid fa-comments"></i>
           </button>
-          <button onclick="abrirConversaInterna('${o.codigo_orcamento}', '${o.cliente_telefone}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="WhatsApp Interno">
+          <button onclick="abrirConversaInterna('${o.cliente_telefone}', '${o.cliente_nome}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="WhatsApp Interno">
             <i class="fa-brands fa-whatsapp"></i>
           </button>
           <button class="btn btn-primary btn-sm" onclick="abrirModalEditarOrcamento(${o.id})" title="Editar">
@@ -2358,11 +2358,11 @@ async function loadWhatsAppInbox() {
   } catch(e) {}
 }
 
-function abrirConversaInterna(codigo, telefone) {
+function abrirConversaInterna(telefone, nome) {
   const btn = document.getElementById("nav-btn-whatsapp");
   if (btn) switchAdminTab('whatsapp', btn);
   else switchAdminTab('whatsapp');
-  abrirInboxChat(codigo, telefone);
+  abrirInboxChat(telefone, nome);
 }
 
 async function abrirInboxChat(telefone, nome) {
@@ -2374,10 +2374,10 @@ async function abrirInboxChat(telefone, nome) {
   document.getElementById("inbox-actions").style.display = "flex";
   
   // Mark as read
-  await fetch(`/api/chat/${encodeURIComponent(codigo)}/read`, {
+  await fetch(`/api/chat/telefone/${encodeURIComponent(currentInboxTel)}/read`, {
     method: "POST",
     headers: { "X-Admin-Token": state.adminToken, "Content-Type": "application/json" },
-    body: JSON.stringify({ telefone })
+    body: JSON.stringify({ telefone: currentInboxTel })
   });
   
   loadWhatsAppInbox();
@@ -2441,14 +2441,13 @@ async function apagarConversaInbox() {
 }
 
 async function carregarMensagensInbox() {
-  if (!currentInboxChat || !state.adminToken) return;
+  if (!currentInboxTel || !state.adminToken) return;
   try {
-    const res = await fetch(`/api/chat/${encodeURIComponent(currentInboxChat)}`, { headers: { "X-Admin-Token": state.adminToken } });
+    const res = await fetch(`/api/chat/telefone/${encodeURIComponent(currentInboxTel)}`, { headers: { "X-Admin-Token": state.adminToken } });
     if (!res.ok) return;
     const mensagens = await res.json();
     
-    // Filter by phone if it is GERAL
-    const filtered = currentInboxChat === "GERAL" ? mensagens.filter(m => m.telefone_cliente === currentInboxTel) : mensagens;
+    const filtered = mensagens;
     
     const container = document.getElementById("inbox-messages");
     if (!container) return;
@@ -2473,14 +2472,35 @@ async function carregarMensagensInbox() {
 async function enviarMensagemInbox() {
   const input = document.getElementById("inbox-input");
   const msg = input.value.trim();
-  if (!msg || !currentInboxChat || !state.adminToken) return;
+  
+  const fileInput = document.getElementById('inbox-file-input');
+  const hasFile = fileInput && fileInput.files.length > 0;
+  
+  if ((!msg && !hasFile) || !currentInboxTel || !state.adminToken) return;
+  
+  const payload = { mensagem: msg };
+  if (hasFile) {
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+      const base64Promise = new Promise(resolve => { reader.onload = e => resolve(e.target.result); });
+      reader.readAsDataURL(file);
+      const b64 = await base64Promise;
+      payload.file_base64 = b64;
+      payload.file_name = file.name;
+      payload.file_mime = file.type;
+      if (file.type.startsWith('image/')) payload.file_type = 'image';
+      else if (file.type.startsWith('audio/')) payload.file_type = 'audio';
+      else if (file.type.startsWith('video/')) payload.file_type = 'video';
+      else payload.file_type = 'document';
+      fileInput.value = '';
+  }
   
   try {
     input.value = "";
-    const res = await fetch(`/api/chat/${encodeURIComponent(currentInboxChat)}`, {
+    const res = await fetch(`/api/chat/telefone/${encodeURIComponent(currentInboxTel)}`, {
       method: "POST",
       headers: { "X-Admin-Token": state.adminToken, "Content-Type": "application/json" },
-      body: JSON.stringify({ mensagem: msg, telefone: currentInboxTel })
+      body: JSON.stringify(payload)
     });
     if (res.ok) {
       carregarMensagensInbox();
