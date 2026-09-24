@@ -1969,36 +1969,75 @@ def webhook_evolution():
                 cursor.execute("INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem) VALUES (?, 'admin', 'Assistente Virtual', ?, ?)", (codigo, telefone, bot_reply))
                 conn.commit()
         else:
-            # Fluxo sem código específico (Fallback)
-            # Verifica a última mensagem que nós (admin/bot) enviamos para esse telefone nos últimos 30 min
             if cursor.is_postgres:
-                cursor.execute("SELECT data_envio FROM mensagens_chat WHERE telefone_cliente = %s AND remetente_tipo = 'admin' ORDER BY id DESC LIMIT 1", (telefone,))
+                cursor.execute("SELECT remetente_nome, mensagem, data_envio FROM mensagens_chat WHERE telefone_cliente = %s AND remetente_tipo = 'admin' ORDER BY id DESC LIMIT 1", (telefone,))
             else:
-                cursor.execute("SELECT data_envio FROM mensagens_chat WHERE telefone_cliente = ? AND remetente_tipo = 'admin' ORDER BY id DESC LIMIT 1", (telefone,))
+                cursor.execute("SELECT remetente_nome, mensagem, data_envio FROM mensagens_chat WHERE telefone_cliente = ? AND remetente_tipo = 'admin' ORDER BY id DESC LIMIT 1", (telefone,))
             
             last_admin = cursor.fetchone()
-            enviar_saudacao = True
+            bot_reply = None
+            
+            # Checar tempo
+            diff = 9999
+            remetente = ""
+            last_msg = ""
             
             if last_admin:
-                dt_str = dict(last_admin).get('data_envio') if hasattr(last_admin, 'keys') else last_admin[0]
+                remetente = dict(last_admin).get('remetente_nome') if hasattr(last_admin, 'keys') else last_admin[0]
+                last_msg = dict(last_admin).get('mensagem') if hasattr(last_admin, 'keys') else last_admin[1]
+                dt_str = dict(last_admin).get('data_envio') if hasattr(last_admin, 'keys') else last_admin[2]
                 if dt_str:
                     try:
                         if isinstance(dt_str, str):
                             last_time = datetime.strptime(dt_str.split('.')[0].split('+')[0], "%Y-%m-%d %H:%M:%S")
                         else:
                             last_time = dt_str.replace(tzinfo=None)
-                        
-                        # Use utcnow to compare with database CURRENT_TIMESTAMP (which is UTC)
                         diff = (datetime.utcnow() - last_time).total_seconds()
-                        if 0 <= diff < 1800: # 30 min
-                            enviar_saudacao = False
                     except:
                         pass
             
-            if enviar_saudacao:
-                fallback_msg = "🤖 *Assistente Automático*\nOlá! Recebemos sua mensagem. Se deseja saber sobre um pedido, digite o código (ex: #GF-09247D22).\n\nCaso contrário, aguarde um instante que um atendente humano já falará com você!"
-                send_evolution_whatsapp(telefone, fallback_msg)
-                cursor.execute("INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem) VALUES (?, 'admin', 'Assistente Virtual', ?, ?)", (codigo, telefone, fallback_msg))
+            if diff > 1800:
+                # Passou muito tempo. Enviar menu inicial
+                bot_reply = "🤖 *Assistente Automático*\nOlá! Como podemos ajudar?\nDigite o NÚMERO da opção:\n1️⃣ - Fazer um pedido/orçamento\n2️⃣ - Falar com atendente\n\n_(Ou se quiser rastrear, digite seu código. ex: #GF-123)_"
+            elif remetente == 'Assistente Virtual':
+                # Bot estava falando, processar estado
+                user_text = text.strip()
+                if "Digite o NÚMERO da opção" in last_msg:
+                    if user_text == '1':
+                        bot_reply = "🤖 Certo! Para começarmos, qual o seu nome completo?"
+                    elif user_text == '2':
+                        bot_reply = "🤖 Aguarde um instante que um atendente humano já falará com você!"
+                    else:
+                        bot_reply = "🤖 Opção inválida. Digite 1 ou 2."
+                
+                elif "qual o seu nome completo?" in last_msg:
+                    bot_reply = f"🤖 Prazer! Descreva o que você precisa fazer (ex: 1000 cartões de visita frente e verso):"
+                
+                elif "Descreva o que você precisa fazer" in last_msg:
+                    # Encontrar o nome do cliente!
+                    # O nome foi a mensagem do cliente antes do bot perguntar a descricao
+                    if cursor.is_postgres:
+                        cursor.execute("SELECT mensagem FROM mensagens_chat WHERE telefone_cliente = %s AND remetente_tipo = 'cliente' ORDER BY id DESC LIMIT 1 OFFSET 1", (telefone,))
+                    else:
+                        cursor.execute("SELECT mensagem FROM mensagens_chat WHERE telefone_cliente = ? AND remetente_tipo = 'cliente' ORDER BY id DESC LIMIT 1 OFFSET 1", (telefone,))
+                    
+                    row = cursor.fetchone()
+                    nome_cliente = row[0] if row else push_name
+                    descricao = user_text
+                    
+                    import uuid
+                    orc_codigo = f"#ORC-{datetime.now().strftime('%m%d')}{uuid.uuid4().hex[:4].upper()}"
+                    
+                    cursor.execute('''
+                        INSERT INTO orcamentos (codigo_orcamento, cliente_nome, cliente_telefone, descricao, valor_estimado, status)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ''', (orc_codigo, nome_cliente, telefone, descricao, 0, 'Pendente'))
+                    
+                    bot_reply = f"✅ Tudo pronto! Registramos sua solicitação sob o código *{orc_codigo}*.\nEm breve nossa equipe enviará os valores!"
+            
+            if bot_reply:
+                send_evolution_whatsapp(telefone, bot_reply)
+                cursor.execute("INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem) VALUES (?, 'admin', 'Assistente Virtual', ?, ?)", ('GERAL', telefone, bot_reply))
                 conn.commit()
 
         conn.close()
