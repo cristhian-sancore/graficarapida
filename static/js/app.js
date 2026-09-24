@@ -2170,21 +2170,26 @@ async function loadWhatsAppInbox() {
       const bg = (currentInboxChat === c.referencia_codigo && currentInboxTel === c.telefone_cliente) ? "rgba(255,255,255,0.1)" : "transparent";
       const unreadBadge = c.nao_lidas > 0 ? `<span class="badge badge-danger" style="border-radius: 50%; padding: 2px 6px; font-size: 0.7rem;">${c.nao_lidas}</span>` : "";
       
-      const nome = c.referencia_codigo === "GERAL" ? c.telefone_cliente : `${c.referencia_codigo} (${c.telefone_cliente})`;
+      const displayName = c.remetente_nome || c.telefone_cliente;
+      const nome = c.referencia_codigo === "GERAL" ? displayName : `${c.referencia_codigo} (${displayName})`;
+      const iniciais = displayName.substring(0, 2).toUpperCase();
       
       return `
-        <div style="padding: 15px; border-bottom: 1px solid var(--border); cursor: pointer; background: ${bg}; display: flex; justify-content: space-between; align-items: center;" onclick="abrirInboxChat('${c.referencia_codigo}', '${c.telefone_cliente}')">
-          <div style="overflow: hidden;">
-            <div style="font-weight: bold; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                ${nome}
-            </div>
-            <div style="font-size: 0.8rem; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                ${c.remetente_tipo === "admin" ? "Você: " : ""}${c.mensagem}
-            </div>
+        <div style="padding: 15px; border-bottom: 1px solid var(--border); cursor: pointer; background: ${bg}; display: flex; gap: 12px; align-items: center;" onclick="abrirInboxChat('${c.referencia_codigo}', '${c.telefone_cliente}')">
+          <div style="width: 42px; height: 42px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; color: #fff; flex-shrink: 0;">
+            ${iniciais}
           </div>
-          <div style="text-align: right; min-width: 40px;">
-            <div style="font-size: 0.75rem; color: #888; margin-bottom: 5px;">${time}</div>
-            ${unreadBadge}
+          <div style="overflow: hidden; flex: 1;">
+            <div style="font-weight: bold; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: #fff;">${nome}</span>
+                <small style="color: #888; font-size: 0.75rem;">${time}</small>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.85rem; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    ${c.remetente_tipo === "admin" ? "Você: " : ""}${c.mensagem}
+                </span>
+                ${unreadBadge}
+            </div>
           </div>
         </div>
       `;
