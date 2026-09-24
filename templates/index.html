@@ -1410,7 +1410,24 @@
     </div>
   </div>
 
+  <!-- Modal Save Contact Inbox -->
+  <div class="modal-overlay" id="modal-save-contact">
+    <div class="modal-container" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Salvar Contato</h3>
+        <button class="modal-close" onclick="closeModal('modal-save-contact')" type="button">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Nome do Contato</label>
+          <input type="text" id="save-contact-name" class="form-control" placeholder="Digite o nome do cliente" onkeypress="if(event.key==='Enter') confirmSaveContact()">
+        </div>
+        <button class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="confirmSaveContact()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- JavaScript Main App -->
-  <script src="/static/js/app.js?v=2.96"></script>
+  <script src="/static/js/app.js?v=2.97"></script>
 </body>
 </html>

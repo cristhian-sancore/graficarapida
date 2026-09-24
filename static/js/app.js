@@ -2222,9 +2222,16 @@ async function abrirInboxChat(codigo, telefone) {
   inboxInterval = setInterval(carregarMensagensInbox, 5000);
 }
 
-async function salvarContatoInbox() {
+function salvarContatoInbox() {
   if (!currentInboxTel || !state.adminToken) return;
-  const nome = prompt("Digite o nome para salvar o contato:", "");
+  document.getElementById("save-contact-name").value = "";
+  document.getElementById("modal-save-contact").style.display = "flex";
+  setTimeout(() => document.getElementById("save-contact-name").focus(), 100);
+}
+
+async function confirmSaveContact() {
+  if (!currentInboxTel || !state.adminToken) return;
+  const nome = document.getElementById("save-contact-name").value.trim();
   if (!nome) return;
   
   try {
@@ -2236,6 +2243,7 @@ async function salvarContatoInbox() {
     const data = await res.json();
     if (data.status === "sucesso") {
       alert(`Cliente salvo com sucesso! A senha gerada é: ${data.senha}`);
+      closeModal('modal-save-contact');
     } else {
       alert(data.message || "Erro ao salvar contato.");
     }
