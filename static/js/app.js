@@ -1,5 +1,5 @@
 /* ==========================================================================
-   APP JAVASCRIPT - GRÁFICA RÁPIDA EXPRESS (COM AUTENTICAÇÃO SEGURA)
+   APP JAVASCRIPT - GRÃFICA RÃPIDA EXPRESS (COM AUTENTICAÃ‡ÃƒO SEGURA)
    ========================================================================== */
 
 // --- SWEETALERT2 OVERRIDE ---
@@ -8,12 +8,12 @@ window.alert = function(msg) {
   if (typeof Swal === 'undefined') return window.originalAlert(msg);
   
   let icon = 'info';
-  let title = 'Atenção';
+  let title = 'AtenÃ§Ã£o';
   
-  if (msg.includes('🎉') || msg.includes('✅') || msg.toLowerCase().includes('sucesso')) {
+  if (msg.includes('ðŸŽ‰') || msg.includes('âœ…') || msg.toLowerCase().includes('sucesso')) {
     icon = 'success';
     title = 'Sucesso!';
-  } else if (msg.includes('❌') || msg.includes('Erro') || msg.includes('inválid') || msg.includes('Falha') || msg.includes('não encontrad')) {
+  } else if (msg.includes('âŒ') || msg.includes('Erro') || msg.includes('invÃ¡lid') || msg.includes('Falha') || msg.includes('nÃ£o encontrad')) {
     icon = 'error';
     title = 'Oops...';
   } else if (msg.includes('Por favor')) {
@@ -42,7 +42,7 @@ window.confirmAsync = async function(msg) {
   if (typeof Swal === 'undefined') return window.originalConfirm(msg);
   const isDark = document.body.classList.contains('dark-mode');
   const res = await Swal.fire({
-    title: 'Confirmação',
+    title: 'ConfirmaÃ§Ã£o',
     text: msg,
     icon: 'warning',
     showCancelButton: true,
@@ -62,7 +62,7 @@ window.promptAsync = async function(msg, defaultVal) {
   if (typeof Swal === 'undefined') return window.originalPrompt(msg, defaultVal);
   const isDark = document.body.classList.contains('dark-mode');
   const res = await Swal.fire({
-    title: 'Atenção',
+    title: 'AtenÃ§Ã£o',
     text: msg,
     input: 'text',
     inputValue: defaultVal || '',
@@ -166,7 +166,7 @@ function switchView(view) {
 }
 
 
-// --- AUTENTICAÇÃO DO CLIENTE ---
+// --- AUTENTICAÃ‡ÃƒO DO CLIENTE ---
 
 async function verificarSessaoCliente() {
   if (!state.clientToken) return;
@@ -181,7 +181,7 @@ async function verificarSessaoCliente() {
       logoutCliente();
     }
   } catch (err) {
-    console.error('Erro checando sessão cliente:', err);
+    console.error('Erro checando sessÃ£o cliente:', err);
   }
 }
 
@@ -233,7 +233,7 @@ async function loginCliente(e) {
       closeModal('modal-auth-cliente');
       atualizarUIClienteLogado();
       if (state.currentView === 'portal-cliente') carregarDadosPortalCliente();
-      alert(`👋 Bem-vindo(a) de volta, ${data.cliente.nome}!`);
+      alert(`ðŸ‘‹ Bem-vindo(a) de volta, ${data.cliente.nome}!`);
     } else {
       alert(data.error || 'Falha no login.');
     }
@@ -265,7 +265,7 @@ async function cadastrarCliente(e) {
         document.getElementById('validar-cli-id').value = data.cliente_id;
         document.getElementById('validar-cli-codigo').value = '';
 
-        let msg = '📱 Código de validação enviado para o seu WhatsApp!';
+        let msg = 'ðŸ“± CÃ³digo de validaÃ§Ã£o enviado para o seu WhatsApp!';
         alert(msg);
       } else {
         state.clientToken = data.token;
@@ -275,7 +275,7 @@ async function cadastrarCliente(e) {
         closeModal('modal-auth-cliente');
         atualizarUIClienteLogado();
         if (state.currentView === 'portal-cliente') carregarDadosPortalCliente();
-        alert(`🎉 Conta criada com sucesso! Bem-vindo(a), ${data.cliente.nome}!`);
+        alert(`ðŸŽ‰ Conta criada com sucesso! Bem-vindo(a), ${data.cliente.nome}!`);
       }
     } else {
       alert(data.error || 'Erro no cadastro.');
@@ -291,7 +291,7 @@ async function validarCodigoCliente(e) {
   const codigo = document.getElementById('validar-cli-codigo').value.trim();
 
   if (!codigo || codigo.length < 6) {
-    alert('Por favor, informe o código de 6 dígitos enviado por WhatsApp.');
+    alert('Por favor, informe o cÃ³digo de 6 dÃ­gitos enviado por WhatsApp.');
     return;
   }
 
@@ -311,12 +311,12 @@ async function validarCodigoCliente(e) {
       closeModal('modal-auth-cliente');
       atualizarUIClienteLogado();
       if (state.currentView === 'portal-cliente') carregarDadosPortalCliente();
-      alert(`🎉 Conta ativada com sucesso! Bem-vindo(a), ${data.cliente.nome}!`);
+      alert(`ðŸŽ‰ Conta ativada com sucesso! Bem-vindo(a), ${data.cliente.nome}!`);
     } else {
-      alert(data.error || 'Código inválido.');
+      alert(data.error || 'CÃ³digo invÃ¡lido.');
     }
   } catch (err) {
-    console.error('Erro validação código:', err);
+    console.error('Erro validaÃ§Ã£o cÃ³digo:', err);
   }
 }
 
@@ -334,13 +334,13 @@ async function reenviarCodigoWhatsApp(e) {
     const data = await res.json();
 
     if (res.ok) {
-      let msg = '📱 Novo código enviado via WhatsApp!';
+      let msg = 'ðŸ“± Novo cÃ³digo enviado via WhatsApp!';
       alert(msg);
     } else {
-      alert(data.error || 'Erro ao reenviar código.');
+      alert(data.error || 'Erro ao reenviar cÃ³digo.');
     }
   } catch (err) {
-    console.error('Erro reenviar código:', err);
+    console.error('Erro reenviar cÃ³digo:', err);
   }
 }
 
@@ -375,7 +375,7 @@ function atualizarUIClienteLogado() {
   }
 }
 
-// --- AUTENTICAÇÃO DO ADMINISTRADOR ---
+// --- AUTENTICAÃ‡ÃƒO DO ADMINISTRADOR ---
 
 async function abrirLoginAdminModal() {
   if (state.adminToken) {
@@ -413,7 +413,7 @@ async function loginAdmin(e) {
       closeModal('modal-auth-admin');
       switchView('admin');
     } else {
-      alert(data.error || 'Credenciais inválidas!');
+      alert(data.error || 'Credenciais invÃ¡lidas!');
     }
   } catch (err) {
     console.error('Erro login admin:', err);
@@ -443,7 +443,7 @@ async function loadConfig() {
       if (el) el.value = val;
     };
 
-    setTxt('brand-name', state.config.nome_grafica || 'Gráfica Rápida Express');
+    setTxt('brand-name', state.config.nome_grafica || 'GrÃ¡fica RÃ¡pida Express');
     setTxt('top-bar-aviso', state.config.aviso_topo || '');
     setTxt('banner-titulo', state.config.banner_titulo || '');
     setTxt('banner-subtitulo', state.config.banner_subtitulo || '');
@@ -469,7 +469,7 @@ async function loadConfig() {
     setVal('cfg-evolution-instance', state.config.evolution_instance || '');
     setVal('cfg-evolution-active', state.config.validar_whatsapp_ativo ? '1' : '0');
   } catch (err) {
-    console.error('Erro ao carregar configurações:', err);
+    console.error('Erro ao carregar configuraÃ§Ãµes:', err);
   }
 }
 
@@ -515,7 +515,7 @@ async function carregarDadosPortalCliente() {
     const container = document.getElementById('portal-pedidos-lista');
 
     if (peds.length === 0 && orcs.length === 0) {
-      container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px;">Você ainda não possui pedidos ou orçamentos cadastrados. Faça sua primeira compra na loja!</div>';
+      container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px;">VocÃª ainda nÃ£o possui pedidos ou orÃ§amentos cadastrados. FaÃ§a sua primeira compra na loja!</div>';
       return;
     }
 
@@ -559,7 +559,7 @@ async function carregarDadosPortalCliente() {
     }
 
     if (orcs.length > 0) {
-      html += '<h3 style="margin-top: 20px; margin-bottom: 15px; color: var(--primary);">Meus Orçamentos</h3>';
+      html += '<h3 style="margin-top: 20px; margin-bottom: 15px; color: var(--primary);">Meus OrÃ§amentos</h3>';
       html += orcs.map(o => `
         <div class="table-wrap" style="padding: 20px; margin-bottom: 20px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
@@ -568,14 +568,14 @@ async function carregarDadosPortalCliente() {
               <span style="color: var(--text-muted); font-size: 0.85rem; margin-left: 10px;">${new Date(o.data_criacao).toLocaleDateString('pt-BR')}</span>
             </div>
             <div>
-              <span class="badge ${o.status === 'Aprovado' ? 'badge-success' : o.status === 'Rejeitado' ? 'badge-danger' : o.status === 'Concluído' ? 'badge-info' : 'badge-warning'}">${o.status}</span>
+              <span class="badge ${o.status === 'Aprovado' ? 'badge-success' : o.status === 'Rejeitado' ? 'badge-danger' : o.status === 'ConcluÃ­do' ? 'badge-info' : 'badge-warning'}">${o.status}</span>
             </div>
           </div>
           <p style="font-size: 0.95rem; margin-bottom: 10px; color: var(--text-color);">${o.descricao}</p>
           <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 12px;">
             <div>Valor Estimado: <strong style="font-size: 1.1rem; color: var(--primary);">R$ ${o.valor_estimado.toFixed(2).replace('.', ',')}</strong></div>
             <button onclick="abrirChatWidget('${o.codigo_orcamento}')" class="btn btn-secondary btn-sm" style="color: #25d366;">
-              <i class="fa-brands fa-whatsapp"></i> Chat do Orçamento
+              <i class="fa-brands fa-whatsapp"></i> Chat do OrÃ§amento
             </button>
           </div>
         </div>
@@ -598,7 +598,7 @@ async function carregarArtesCliente() {
     const container = document.getElementById('portal-artes-grid');
 
     if (artes.length === 0) {
-      container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 30px;">Sua biblioteca de artes está vazia. Faça o upload dos seus logotipos acima.</div>';
+      container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 30px;">Sua biblioteca de artes estÃ¡ vazia. FaÃ§a o upload dos seus logotipos acima.</div>';
       return;
     }
 
@@ -706,7 +706,7 @@ async function solicitarOrcamentoCliente(e) {
     });
     const data = await res.json();
     if (res.ok) {
-      alert(`🎉 Solicitação de Orçamento enviada com sucesso (${data.codigo})! Em breve entraremos em contato via WhatsApp.`);
+      alert(`ðŸŽ‰ SolicitaÃ§Ã£o de OrÃ§amento enviada com sucesso (${data.codigo})! Em breve entraremos em contato via WhatsApp.`);
       e.target.reset();
     }
   } catch (err) {
@@ -786,7 +786,7 @@ function openProdutoModal(prodId) {
 
   state.produtoSelecionado = prod;
   state.opcoesSelecionadas = {
-    tamanho: prod.tamanhos[0] || 'Padrão',
+    tamanho: prod.tamanhos[0] || 'PadrÃ£o',
     papel: prod.papeis[0] || 'Standard',
     acabamento: prod.acabamentos[0] || 'Sem acabamento',
     tiragem: prod.tiragens[0] || { qtd: 1, preco: prod.preco_base || 0 },
@@ -895,7 +895,7 @@ async function uploadArteFile(input) {
     const data = await res.json();
     if (res.ok) {
       state.opcoesSelecionadas.arteUrl = data.url;
-      document.getElementById('filename-uploaded').innerText = `✅ Arquivo enviado: ${data.filename}`;
+      document.getElementById('filename-uploaded').innerText = `âœ… Arquivo enviado: ${data.filename}`;
     } else {
       alert(data.error || 'Erro no envio do arquivo.');
     }
@@ -954,7 +954,7 @@ function toggleCartDrawer(openForce) {
 function renderCart() {
   const container = document.getElementById('cart-body');
   if (state.carrinho.length === 0) {
-    container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px 0;">Seu carrinho está vazio.</div>';
+    container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px 0;">Seu carrinho estÃ¡ vazio.</div>';
     atualizarTotalCheckout();
     return;
   }
@@ -966,7 +966,7 @@ function renderCart() {
         <div style="font-size: 0.8rem; color: var(--text-muted);">
           ${item.tamanho} | ${item.papel}<br>
           Acabamento: ${item.acabamento}<br>
-          Qtd: ${item.quantidade} un ${item.criar_arte ? '<br><span style="color: var(--cyan); font-weight:700;">+ Criação de Arte</span>' : ''}
+          Qtd: ${item.quantidade} un ${item.criar_arte ? '<br><span style="color: var(--cyan); font-weight:700;">+ CriaÃ§Ã£o de Arte</span>' : ''}
         </div>
         <div style="font-weight: 800; color: var(--primary); margin-top: 6px;">
           R$ ${item.preco_total.toFixed(2).replace('.', ',')}
@@ -1002,12 +1002,12 @@ async function aplicarCupomCheckout() {
     if (res.ok && data.valid) {
       state.cupomAplicado = data;
       feedback.style.color = 'var(--success)';
-      feedback.innerText = `✅ ${data.message}`;
+      feedback.innerText = `âœ… ${data.message}`;
       atualizarTotalCheckout();
     } else {
       state.cupomAplicado = null;
       feedback.style.color = 'var(--danger)';
-      feedback.innerText = `❌ ${data.message || 'Cupom inválido'}`;
+      feedback.innerText = `âŒ ${data.message || 'Cupom invÃ¡lido'}`;
       atualizarTotalCheckout();
     }
   } catch (err) {
@@ -1046,7 +1046,7 @@ async function finalizarPedidoCheckout() {
   if (!nome || !telefone) {
     Swal.fire({
       icon: 'warning',
-      title: 'Atenção',
+      title: 'AtenÃ§Ã£o',
       text: 'Por favor, informe seu Nome Completo e WhatsApp!',
       background: document.body.classList.contains('dark-mode') ? '#1e1e2d' : '#ffffff',
       color: document.body.classList.contains('dark-mode') ? '#f3f4f6' : '#1f2937'
@@ -1054,7 +1054,7 @@ async function finalizarPedidoCheckout() {
     return;
   }
   if (state.carrinho.length === 0) {
-    alert('Seu carrinho está vazio!');
+    alert('Seu carrinho estÃ¡ vazio!');
     return;
   }
 
@@ -1099,7 +1099,7 @@ async function finalizarPedidoCheckout() {
       if (pagamento === 'PIX') {
         openModal('modal-pix');
       } else {
-        alert(`🎉 Pedido ${data.codigo_pedido} realizado com sucesso! Acompanhe seu status.`);
+        alert(`ðŸŽ‰ Pedido ${data.codigo_pedido} realizado com sucesso! Acompanhe seu status.`);
         consultarPedidoCodigo(data.codigo_pedido);
       }
     } else {
@@ -1115,7 +1115,7 @@ function copiarChavePix() {
   const input = document.getElementById('pix-key-input');
   input.select();
   document.execCommand('copy');
-  alert('Chave PIX copiada para a área de transferência!');
+  alert('Chave PIX copiada para a Ã¡rea de transferÃªncia!');
 }
 
 function confirmarEVerPedido() {
@@ -1148,7 +1148,7 @@ async function consultarPedidoCodigo(codigo) {
     const ped = await res.json();
 
     if (!res.ok) {
-      alert(ped.error || 'Pedido não encontrado.');
+      alert(ped.error || 'Pedido nÃ£o encontrado.');
       return;
     }
 
@@ -1178,8 +1178,8 @@ function updateTimelineVisual(statusProd, statusPag) {
 
   let activeIdx = 0;
   if (statusPag === 'Aprovado') activeIdx = 1;
-  if (statusProd === 'Em Análise de Arte') activeIdx = 1;
-  if (statusProd === 'Em Impressão') activeIdx = 2;
+  if (statusProd === 'Em AnÃ¡lise de Arte') activeIdx = 1;
+  if (statusProd === 'Em ImpressÃ£o') activeIdx = 2;
   if (statusProd === 'Acabamento & Corte') activeIdx = 3;
   if (statusProd === 'Pronto para Retirada') activeIdx = 4;
   if (statusProd === 'Entregue') activeIdx = 5;
@@ -1195,17 +1195,17 @@ function updateTimelineVisual(statusProd, statusPag) {
 
 function falarWhatsApp() {
   const w = state.config.whatsapp || '5511999998888';
-  window.open(`https://wa.me/${w}?text=Olá! Gostaria de tirar uma dúvida sobre serviços de impressão.`, '_blank');
+  window.open(`https://wa.me/${w}?text=OlÃ¡! Gostaria de tirar uma dÃºvida sobre serviÃ§os de impressÃ£o.`, '_blank');
 }
 
 function falarWhatsAppPedido() {
   const cod = document.getElementById('tr-codigo').innerText;
   const w = state.config.whatsapp || '5511999998888';
-  window.open(`https://wa.me/${w}?text=Olá! Gostaria de falar sobre o meu pedido ${cod}.`, '_blank');
+  window.open(`https://wa.me/${w}?text=OlÃ¡! Gostaria de falar sobre o meu pedido ${cod}.`, '_blank');
 }
 
 // ==========================================================================
-// PAINEL ADMINISTRATIVO (COM AUTENTICAÇÃO RESTREITA)
+// PAINEL ADMINISTRATIVO (COM AUTENTICAÃ‡ÃƒO RESTREITA)
 // ==========================================================================
 
 function switchAdminTab(tab, btn) {
@@ -1270,7 +1270,7 @@ async function loadDashboardMetrics() {
   }
 }
 
-// --- KANBAN DE PRODUÇÃO ---
+// --- KANBAN DE PRODUÃ‡ÃƒO ---
 
 async function loadKanbanBoard() {
   try {
@@ -1279,8 +1279,8 @@ async function loadKanbanBoard() {
     });
     const peds = await res.json(); state.pedidosCache = peds;
 
-    const analise = peds.filter(p => p.status_producao === 'Em Análise de Arte');
-    const impressao = peds.filter(p => p.status_producao === 'Em Impressão');
+    const analise = peds.filter(p => p.status_producao === 'Em AnÃ¡lise de Arte');
+    const impressao = peds.filter(p => p.status_producao === 'Em ImpressÃ£o');
     const acabamento = peds.filter(p => p.status_producao === 'Acabamento & Corte');
     const pronto = peds.filter(p => p.status_producao === 'Pronto para Retirada' || p.status_producao === 'Entregue');
 
@@ -1289,7 +1289,7 @@ async function loadKanbanBoard() {
     document.getElementById('kanban-count-acabamento').innerText = acabamento.length;
     document.getElementById('kanban-count-pronto').innerText = pronto.length;
 
-    renderKanbanCol('kanban-cards-analise', analise, 'Em Impressão');
+    renderKanbanCol('kanban-cards-analise', analise, 'Em ImpressÃ£o');
     renderKanbanCol('kanban-cards-impressao', impressao, 'Acabamento & Corte');
     renderKanbanCol('kanban-cards-acabamento', acabamento, 'Pronto para Retirada');
     renderKanbanCol('kanban-cards-pronto', pronto, 'Entregue');
@@ -1318,7 +1318,7 @@ function renderKanbanCol(elementId, items, proximoStatus) {
           <i class="fa-solid fa-print"></i> OS
         </button>
         <button class="btn btn-primary btn-sm" style="flex: 1; font-size: 0.75rem;" onclick="alterarStatusPedido(${p.id}, '${proximoStatus}', null)">
-          Avançar <i class="fa-solid fa-arrow-right"></i>
+          AvanÃ§ar <i class="fa-solid fa-arrow-right"></i>
         </button>
       </div>
     </div>
@@ -1355,8 +1355,8 @@ async function loadAdminPedidos() {
         <td>
           <select class="form-control" style="padding: 4px 8px; font-size: 0.8rem;" onchange="alterarStatusPedido(${p.id}, this.value, null)">
             <option value="Aguardando Pagamento" ${p.status_producao === 'Aguardando Pagamento' ? 'selected' : ''}>Aguardando Pagto</option>
-            <option value="Em Análise de Arte" ${p.status_producao === 'Em Análise de Arte' ? 'selected' : ''}>Em Análise Arte</option>
-            <option value="Em Impressão" ${p.status_producao === 'Em Impressão' ? 'selected' : ''}>Em Impressão</option>
+            <option value="Em AnÃ¡lise de Arte" ${p.status_producao === 'Em AnÃ¡lise de Arte' ? 'selected' : ''}>Em AnÃ¡lise Arte</option>
+            <option value="Em ImpressÃ£o" ${p.status_producao === 'Em ImpressÃ£o' ? 'selected' : ''}>Em ImpressÃ£o</option>
             <option value="Acabamento & Corte" ${p.status_producao === 'Acabamento & Corte' ? 'selected' : ''}>Acabamento/Corte</option>
             <option value="Pronto para Retirada" ${p.status_producao === 'Pronto para Retirada' ? 'selected' : ''}>Pronto p/ Retirar</option>
             <option value="Entregue" ${p.status_producao === 'Entregue' ? 'selected' : ''}>Entregue</option>
@@ -1365,7 +1365,7 @@ async function loadAdminPedidos() {
         <td>
           <div style="display: flex; gap: 5px; flex-wrap: wrap;">
             <button class="btn btn-secondary btn-sm" onclick="verArquivosPedido(${p.id})" title="Ver Arquivos da Arte"><i class="fa-solid fa-folder-open"></i></button>
-            <button class="btn btn-secondary btn-sm" onclick="imprimirOS(${p.id})" title="Imprimir Ordem de Serviço"><i class="fa-solid fa-print"></i></button>
+            <button class="btn btn-secondary btn-sm" onclick="imprimirOS(${p.id})" title="Imprimir Ordem de ServiÃ§o"><i class="fa-solid fa-print"></i></button>
             <button class="btn btn-danger btn-sm" onclick="excluirPedidoAdmin(${p.id})" title="Excluir Pedido"><i class="fa-solid fa-trash"></i></button>
             <button onclick="abrirChatWidget('${p.codigo_pedido}', '${p.cliente_telefone}', '${p.cliente_nome}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Chat Interno">
               <i class="fa-solid fa-comments"></i>
@@ -1400,7 +1400,7 @@ function verArquivosPedido(id) {
     Swal.fire({
       icon: 'info',
       title: 'Nenhum arquivo',
-      text: 'O cliente não anexou nenhuma arte neste pedido.',
+      text: 'O cliente nÃ£o anexou nenhuma arte neste pedido.',
       background: document.body.classList.contains('dark-mode') ? '#1e1e2d' : '#ffffff',
       color: document.body.classList.contains('dark-mode') ? '#f3f4f6' : '#1f2937'
     });
@@ -1442,7 +1442,7 @@ async function imprimirOS(pedidoId) {
     const res = await fetch(`/api/pedidos/${pedidoId}`);
     const p = await res.json();
 
-    document.getElementById('os-grafica-nome').innerText = state.config.nome_grafica || 'GRÁFICA RÁPIDA EXPRESS';
+    document.getElementById('os-grafica-nome').innerText = state.config.nome_grafica || 'GRÃFICA RÃPIDA EXPRESS';
     document.getElementById('os-codigo').innerText = p.codigo_pedido;
     document.getElementById('os-cliente').innerText = p.cliente_nome;
     document.getElementById('os-telefone').innerText = p.cliente_telefone;
@@ -1457,7 +1457,7 @@ async function imprimirOS(pedidoId) {
         <td style="border: 1px solid black; padding: 8px;">
           Tamanho: ${i.tamanho} | Papel: ${i.papel} | Acabamento: ${i.acabamento}
           ${i.arte_url ? `<br>Arte: <a href="${i.arte_url}" target="_blank">Abrir Arquivo</a>` : ''}
-          ${i.criar_arte ? `<br>Criação: ${i.detalhes_arte}` : ''}
+          ${i.criar_arte ? `<br>CriaÃ§Ã£o: ${i.detalhes_arte}` : ''}
         </td>
         <td style="border: 1px solid black; padding: 8px; text-align: right;">R$ ${i.preco_total.toFixed(2).replace('.', ',')}</td>
       </tr>
@@ -1491,7 +1491,7 @@ async function loadAdminEstoque() {
         <td>${i.quantidade_minima} ${i.unidade_medida}</td>
         <td>
           <span class="badge ${i.quantidade_atual <= i.quantidade_minima ? 'badge-danger' : 'badge-success'}">
-            ${i.quantidade_atual <= i.quantidade_minima ? '⚠️ Baixo Estoque' : 'OK'}
+            ${i.quantidade_atual <= i.quantidade_minima ? 'âš ï¸ Baixo Estoque' : 'OK'}
           </span>
         </td>
         <td>
@@ -1560,7 +1560,7 @@ async function ajustarEstoqueInsumo(id, qtdAtual) {
   }
 }
 
-// --- ORÇAMENTISTA ---
+// --- ORÃ‡AMENTISTA ---
 
 window.allOrcamentos = [];
 
@@ -1577,7 +1577,7 @@ async function loadAdminOrcamentos() {
         <td>${o.cliente_nome}<br><small style="color: var(--text-muted);">${o.cliente_telefone}</small></td>
         <td>${o.descricao}</td>
         <td style="font-weight: 800; color: var(--primary);">R$ ${o.valor_estimado.toFixed(2).replace('.', ',')}</td>
-        <td><span class="badge ${o.status === 'Aprovado' ? 'badge-success' : o.status === 'Rejeitado' ? 'badge-danger' : o.status === 'Concluído' ? 'badge-info' : 'badge-warning'}">${o.status}</span></td>
+        <td><span class="badge ${o.status === 'Aprovado' ? 'badge-success' : o.status === 'Rejeitado' ? 'badge-danger' : o.status === 'ConcluÃ­do' ? 'badge-info' : 'badge-warning'}">${o.status}</span></td>
         <td style="display: flex; gap: 5px; flex-wrap: wrap;">
           <button onclick="abrirChatWidget('${o.codigo_orcamento}', '${o.cliente_telefone}', '${o.cliente_nome}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Chat Interno">
             <i class="fa-solid fa-comments"></i>
@@ -1619,7 +1619,7 @@ function abrirModalEditarOrcamento(id) {
 }
 
 async function excluirOrcamentoAdmin(id) {
-  if (!(await window.confirmAsync("Tem certeza que deseja excluir este orçamento?"))) return;
+  if (!(await window.confirmAsync("Tem certeza que deseja excluir este orÃ§amento?"))) return;
   try {
     const res = await fetch('/api/orcamentos/' + id, {
       method: 'DELETE',
@@ -1662,7 +1662,7 @@ async function salvarOrcamentoAdmin(e) {
       closeModal('modal-admin-orcamento');
       loadAdminOrcamentos();
     } else {
-      alert(json.error || 'Erro ao salvar orçamento');
+      alert(json.error || 'Erro ao salvar orÃ§amento');
     }
   } catch (err) {
     alert(err.message);
@@ -2020,7 +2020,7 @@ async function salvarClienteAdmin(e) {
 async function redefinirSenhaCliente() {
   const id = document.getElementById('admin-cli-id').value;
   if (!id) return;
-  if (!(await window.confirmAsync("Tem certeza que deseja redefinir a senha deste cliente? Ele receberá a nova senha no WhatsApp."))) return;
+  if (!(await window.confirmAsync("Tem certeza que deseja redefinir a senha deste cliente? Ele receberÃ¡ a nova senha no WhatsApp."))) return;
   
   try {
     const res = await fetch('/api/clientes/redefinir-senha', {
@@ -2041,7 +2041,7 @@ async function redefinirSenhaCliente() {
 }
 
 async function excluirClienteAdmin(id) {
-  if (!(await window.confirmAsync("Tem certeza que deseja excluir este cliente? Essa ação não pode ser desfeita!"))) return;
+  if (!(await window.confirmAsync("Tem certeza que deseja excluir este cliente? Essa aÃ§Ã£o nÃ£o pode ser desfeita!"))) return;
   
   try {
     const res = await fetch('/api/clientes/' + id, {
@@ -2057,7 +2057,7 @@ async function excluirClienteAdmin(id) {
   }
 }
 
-// --- CONFIGURAÇÕES CMS (ADMIN) ---
+// --- CONFIGURAÃ‡Ã•ES CMS (ADMIN) ---
 
 async function salvarConfiguracoes(e) {
   e.preventDefault();
@@ -2086,7 +2086,7 @@ async function salvarConfiguracoes(e) {
       body: JSON.stringify(payload)
     });
     if (res.ok) {
-      alert('Configurações salvas com sucesso!');
+      alert('ConfiguraÃ§Ãµes salvas com sucesso!');
       loadConfig();
     }
   } catch (err) {
@@ -2100,7 +2100,7 @@ async function testarEvolutionAPI() {
   const instance = document.getElementById('cfg-evolution-instance').value.trim();
 
   if (!url || !key || !instance) {
-    alert('Por favor, preencha a URL da Evolution API, a API Key e o Nome da Instância para testar.');
+    alert('Por favor, preencha a URL da Evolution API, a API Key e o Nome da InstÃ¢ncia para testar.');
     return;
   }
 
@@ -2116,9 +2116,9 @@ async function testarEvolutionAPI() {
     const data = await res.json();
 
     if (res.ok && data.success) {
-      alert(`✅ Conexão com Evolution API estabelecida com sucesso!\n\n${data.message}`);
+      alert(`âœ… ConexÃ£o com Evolution API estabelecida com sucesso!\n\n${data.message}`);
     } else {
-      alert(`❌ Erro ao conectar com Evolution API:\n${data.error || 'Instância não conectada ou chave inválida.'}`);
+      alert(`âŒ Erro ao conectar com Evolution API:\n${data.error || 'InstÃ¢ncia nÃ£o conectada ou chave invÃ¡lida.'}`);
     }
   } catch (err) {
     console.error('Erro testar Evolution API:', err);
@@ -2346,7 +2346,7 @@ async function loadWhatsAppInbox() {
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <span style="font-size: 0.85rem; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                    ${c.remetente_tipo === "admin" ? "Você: " : ""}${c.mensagem}
+                    ${c.remetente_tipo === "admin" ? "VocÃª: " : ""}${c.mensagem}
                 </span>
                 ${unreadBadge}
             </div>
@@ -2408,13 +2408,13 @@ async function confirmSaveContact() {
     });
     const data = await res.json();
     if (data.status === "sucesso") {
-      alert(`Cliente salvo com sucesso! A senha gerada é: ${data.senha}`);
+      alert(`Cliente salvo com sucesso! A senha gerada Ã©: ${data.senha}`);
       closeModal('modal-save-contact');
     } else {
       alert(data.message || "Erro ao salvar contato.");
     }
   } catch(e) {
-    alert("Erro de conexão.");
+    alert("Erro de conexÃ£o.");
   }
 }
 
@@ -2522,11 +2522,10 @@ function handleChatEnter(e) {
   if (e.key === "Enter") enviarMensagemChat();
 }
 
-
 async function excluirMovimentoCaixa(id) {
-  if (!(await window.confirmAsync('Deseja realmente excluir esta movimentao?'))) return;
+  if (!(await window.confirmAsync('Deseja realmente excluir esta movimentaÃ§Ã£o?'))) return;
   try {
-    const res = await fetch(/api/caixa/movimento/${id}, {
+    const res = await fetch(`/api/caixa/movimento/${id}`, {
       method: 'DELETE',
       headers: { 'X-Admin-Token': state.adminToken }
     });
@@ -2556,3 +2555,4 @@ async function editarInsumoAdmin(id) {
     console.error('Erro ao editar insumo:', err);
   }
 }
+
