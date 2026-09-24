@@ -1597,6 +1597,7 @@ def redefinir_senha_cliente():
         conn.close()
         return jsonify({'error': 'Cliente não encontrado.'}), 404
 
+    import string
     nova_senha = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
     senha_hash = generate_password_hash(nova_senha)
 
