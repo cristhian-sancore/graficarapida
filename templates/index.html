@@ -1315,7 +1315,32 @@
     </div>
   </div>
 
+  <!-- Chat Flutuante (Cliente) -->
+  <div id="chat-widget" class="chat-widget-container" style="display: none;">
+    <div class="chat-widget-header">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <i class="fa-solid fa-headset" style="font-size: 1.2rem;"></i>
+        <div>
+          <strong style="display: block;">Atendimento</strong>
+          <span style="font-size: 0.8rem; font-weight: normal; opacity: 0.9;" id="chat-widget-codigo">#REF</span>
+        </div>
+      </div>
+      <button class="btn btn-sm" style="background: transparent; color: white; border: none; font-size: 1.2rem;" onclick="fecharChatWidget()">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="chat-widget-messages" id="chat-widget-messages">
+      <!-- Mensagens carregadas dinamicamente -->
+    </div>
+    <div class="chat-widget-input-area">
+      <input type="text" id="chat-widget-input" placeholder="Digite sua mensagem..." onkeypress="handleChatEnter(event)">
+      <button class="btn btn-primary" onclick="enviarMensagemChat()">
+        <i class="fa-solid fa-paper-plane"></i>
+      </button>
+    </div>
+  </div>
+
   <!-- JavaScript Main App -->
-  <script src="/static/js/app.js?v=2.7"></script>
+  <script src="/static/js/app.js?v=2.8"></script>
 </body>
 </html>

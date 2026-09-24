@@ -484,6 +484,9 @@ async function carregarDadosPortalCliente() {
               <button class="btn btn-secondary btn-sm" onclick="repetirPedidoCliente(${p.id})">
                 <i class="fa-solid fa-rotate-right"></i> Pedir Novamente
               </button>
+              <button class="btn btn-secondary btn-sm" style="color: #25d366;" onclick="abrirChatWidget('${p.codigo_pedido}')">
+                <i class="fa-solid fa-comments"></i> Chat
+              </button>
               <button class="btn btn-primary btn-sm" onclick="consultarPedidoCodigo('${p.codigo_pedido}')">
                 <i class="fa-solid fa-truck-fast"></i> Rastrear
               </button>
@@ -509,9 +512,9 @@ async function carregarDadosPortalCliente() {
           <p style="font-size: 0.95rem; margin-bottom: 10px; color: var(--text-color);">${o.descricao}</p>
           <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 12px;">
             <div>Valor Estimado: <strong style="font-size: 1.1rem; color: var(--primary);">R$ ${o.valor_estimado.toFixed(2).replace('.', ',')}</strong></div>
-            <a href="https://wa.me/${(state.config.whatsapp || '').replace(/\D/g, '')}?text=Olá! Gostaria de falar sobre o meu orçamento ${o.codigo_orcamento}." target="_blank" class="btn btn-secondary btn-sm" style="color: #25d366;">
-              <i class="fa-brands fa-whatsapp"></i> Falar com Atendimento
-            </a>
+            <button onclick="abrirChatWidget('${o.codigo_orcamento}')" class="btn btn-secondary btn-sm" style="color: #25d366;">
+              <i class="fa-brands fa-whatsapp"></i> Chat do Orçamento
+            </button>
           </div>
         </div>
       `).join('');
@@ -1286,7 +1289,12 @@ async function loadAdminPedidos() {
           </select>
         </td>
         <td>
-          <button class="btn btn-secondary btn-sm" onclick="imprimirOS(${p.id})" title="Imprimir Ordem de Serviço"><i class="fa-solid fa-print"></i></button>
+          <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" onclick="imprimirOS(${p.id})" title="Imprimir Ordem de Serviço"><i class="fa-solid fa-print"></i></button>
+            <button onclick="abrirChatWidget('${p.codigo_pedido}', '${p.cliente_telefone}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Chat Interno">
+              <i class="fa-solid fa-comments"></i>
+            </button>
+          </div>
         </td>
       </tr>
     `).join('');
@@ -1448,9 +1456,9 @@ async function loadAdminOrcamentos() {
         <td style="font-weight: 800; color: var(--primary);">R$ ${o.valor_estimado.toFixed(2).replace('.', ',')}</td>
         <td><span class="badge ${o.status === 'Aprovado' ? 'badge-success' : o.status === 'Rejeitado' ? 'badge-danger' : o.status === 'Concluído' ? 'badge-info' : 'badge-warning'}">${o.status}</span></td>
         <td style="display: flex; gap: 5px; flex-wrap: wrap;">
-          <a href="https://wa.me/${o.cliente_telefone.replace(/\D/g, '')}?text=Olá! Segue o seu orçamento ${o.codigo_orcamento}: ${encodeURIComponent(o.descricao)} no valor de R$ ${o.valor_estimado.toFixed(2)}" target="_blank" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Enviar WhatsApp">
-            <i class="fa-brands fa-whatsapp"></i>
-          </a>
+          <button onclick="abrirChatWidget('${o.codigo_orcamento}', '${o.cliente_telefone}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Chat Interno">
+            <i class="fa-solid fa-comments"></i>
+          </button>
           <button class="btn btn-primary btn-sm" onclick="abrirModalEditarOrcamento(${o.id})" title="Editar">
             <i class="fa-solid fa-pen"></i>
           </button>
@@ -1958,3 +1966,108 @@ function closeModal(id) {
   const el = document.getElementById(id);
   if (el) el.classList.remove('active');
 }
+
+// ==========================================================================
+// CHAT FLUTUANTE (SISTEMA INTERNO)
+// ==========================================================================
+
+let chatWidgetRef = null;
+let chatWidgetTel = null;
+let chatWidgetInterval = null;
+
+function abrirChatWidget(codigo, telefone = null) {
+  chatWidgetRef = codigo;
+  chatWidgetTel = telefone;
+  
+  document.getElementById("chat-widget-codigo").innerText = codigo;
+  document.getElementById("chat-widget").style.display = "flex";
+  
+  carregarMensagensChat();
+  
+  // Polling para novas mensagens (a cada 5 segundos)
+  if (chatWidgetInterval) clearInterval(chatWidgetInterval);
+  chatWidgetInterval = setInterval(carregarMensagensChat, 5000);
+}
+
+function fecharChatWidget() {
+  document.getElementById("chat-widget").style.display = "none";
+  if (chatWidgetInterval) clearInterval(chatWidgetInterval);
+}
+
+async function carregarMensagensChat() {
+  if (!chatWidgetRef) return;
+  
+  const headers = {};
+  if (state.adminToken) headers["X-Admin-Token"] = state.adminToken;
+  if (state.clientToken) headers["X-Client-Token"] = state.clientToken;
+  
+  try {
+    const res = await fetch(`/api/chat/${chatWidgetRef}`, { headers });
+    if (!res.ok) return;
+    const mensagens = await res.json();
+    
+    const container = document.getElementById("chat-widget-messages");
+    if (mensagens.length === 0) {
+      container.innerHTML = `<div style="text-align: center; color: #888; font-size: 0.9rem; margin-top: 20px;">Envie uma mensagem para iniciar o atendimento.</div>`;
+      return;
+    }
+    
+    // Check if user is admin to color bubbles correctly
+    const souAdmin = !!state.adminToken;
+    
+    container.innerHTML = mensagens.map(m => {
+      const isMe = (souAdmin && m.remetente_tipo === "admin") || (!souAdmin && m.remetente_tipo === "cliente");
+      const alignClass = isMe ? "cliente" : "admin"; // Using classes from CSS
+      const time = new Date(m.data_envio).toLocaleTimeString([], {hour: "2-digit", minute:"2-digit"});
+      
+      return `
+        <div class="chat-msg ${alignClass}">
+          <strong>${m.remetente_nome}</strong>
+          <div style="margin-top: 4px;">${m.mensagem}</div>
+          <span class="chat-msg-time">${time}</span>
+        </div>
+      `;
+    }).join("");
+    
+    // Auto scroll to bottom
+    container.scrollTop = container.scrollHeight;
+    
+  } catch(e) {
+    console.error("Erro chat:", e);
+  }
+}
+
+async function enviarMensagemChat() {
+  const input = document.getElementById("chat-widget-input");
+  const msg = input.value.trim();
+  if (!msg || !chatWidgetRef) return;
+  
+  const headers = { "Content-Type": "application/json" };
+  if (state.adminToken) headers["X-Admin-Token"] = state.adminToken;
+  if (state.clientToken) headers["X-Client-Token"] = state.clientToken;
+  
+  const body = { mensagem: msg };
+  if (chatWidgetTel) body.telefone = chatWidgetTel;
+  else if (state.clienteLogado) body.telefone = state.clienteLogado.telefone;
+  
+  try {
+    input.value = "";
+    const res = await fetch(`/api/chat/${chatWidgetRef}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body)
+    });
+    if (res.ok) {
+      carregarMensagensChat();
+    } else {
+      alert("Erro ao enviar mensagem.");
+    }
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function handleChatEnter(e) {
+  if (e.key === "Enter") enviarMensagemChat();
+}
+

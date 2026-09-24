@@ -160,6 +160,20 @@ def init_db():
     conn = get_db()
     cursor = conn.cursor()
     
+    # Chat Interno
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS mensagens_chat (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            referencia_codigo TEXT NOT NULL,
+            remetente_tipo TEXT NOT NULL,
+            remetente_nome TEXT NOT NULL,
+            telefone_cliente TEXT,
+            mensagem TEXT NOT NULL,
+            lida INTEGER DEFAULT 0,
+            data_envio DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     # Configurações do Site / CMS / Evolution API
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS configuracoes (
@@ -1613,6 +1627,119 @@ def get_dashboard_metrics():
         'vendas_dia': vendas_dia
     })
 
+
+# --- APIS DO CHAT INTERNO & WEBHOOK ---
+
+@app.route('/api/chat/<path:codigo>', methods=['GET'])
+def api_chat_get(codigo):
+    token_admin = request.headers.get('X-Admin-Token')
+    token_cliente = request.headers.get('X-Client-Token')
+    
+    if not token_admin and not token_cliente:
+        return jsonify({'error': 'Acesso negado'}), 401
+        
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM mensagens_chat WHERE referencia_codigo = ? ORDER BY data_envio ASC', (codigo,))
+    mensagens = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return jsonify(mensagens)
+
+@app.route('/api/chat/<path:codigo>', methods=['POST'])
+def api_chat_post(codigo):
+    token_admin = request.headers.get('X-Admin-Token')
+    token_cliente = request.headers.get('X-Client-Token')
+    
+    if not token_admin and not token_cliente:
+        return jsonify({'error': 'Acesso negado'}), 401
+        
+    data = request.json
+    mensagem = data.get('mensagem', '').strip()
+    telefone = data.get('telefone', '')
+    
+    if not mensagem:
+        return jsonify({'error': 'Mensagem vazia'}), 400
+        
+    remetente_tipo = 'admin' if token_admin else 'cliente'
+    
+    if remetente_tipo == 'admin':
+        admin = get_current_admin(token_admin)
+        remetente_nome = admin['nome'] if admin else 'Atendimento'
+    else:
+        cli = get_current_client(token_cliente)
+        remetente_nome = cli['nome'] if cli else 'Cliente'
+        
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (codigo, remetente_tipo, remetente_nome, telefone, mensagem))
+    conn.commit()
+    conn.close()
+    
+    # Se for admin, notifica o cliente via Evolution API
+    if remetente_tipo == 'admin' and telefone:
+        msg_wpp = f"💬 *Gráfica Rápida Express*\nNova mensagem sobre o {codigo}:\n\n_{mensagem}_\n\nAcesse o site para responder!"
+        send_evolution_whatsapp(telefone, msg_wpp)
+        
+    # Se for cliente, notifica a gráfica via Evolution API
+    if remetente_tipo == 'cliente':
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('SELECT whatsapp FROM configuracoes LIMIT 1')
+        cfg = cursor.fetchone()
+        conn.close()
+        if cfg and cfg['whatsapp']:
+            msg_wpp_admin = f"🔔 *Alerta de Mensagem*\nO cliente {remetente_nome} enviou uma mensagem sobre o {codigo}:\n\n_{mensagem}_\n\nAcesse o painel para responder!"
+            send_evolution_whatsapp(cfg['whatsapp'], msg_wpp_admin)
+    
+    return jsonify({'message': 'Mensagem enviada'})
+
+@app.route('/api/webhook/evolution', methods=['POST'])
+def webhook_evolution():
+    # Recebe mensagens do cliente pelo WhatsApp e joga no chat do pedido
+    # OBS: O Evolution API manda payloads diferentes dependendo da versão, 
+    # estamos usando um genérico que tenta encontrar o remoteJid e text.
+    try:
+        data = request.json
+        if not data:
+            return jsonify({'status': 'ignorado'}), 200
+            
+        messages = data.get('data', {}).get('message', {})
+        if not messages:
+            return jsonify({'status': 'ignorado'}), 200
+            
+        remote_jid = data.get('data', {}).get('key', {}).get('remoteJid', '')
+        text = messages.get('conversation') or messages.get('extendedTextMessage', {}).get('text')
+        
+        if not remote_jid or not text:
+            return jsonify({'status': 'ignorado'}), 200
+            
+        # Pega o telefone (tira o @s.whatsapp.net)
+        telefone = remote_jid.split('@')[0]
+        
+        # Como não sabemos a qual pedido pertence a mensagem avulsa, 
+        # a estratégia ideal seria usar IA ou o atendente ler no painel.
+        # Por enquanto, só vamos processar se o cliente enviar o CÓDIGO na mensagem ex: "#ORC-1234 ola"
+        import re
+        match = re.search(r'(#[A-Z]+-[A-Z0-9]+)', text.upper())
+        if match:
+            codigo = match.group(1)
+            conn = get_db()
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem)
+                VALUES (?, 'cliente', 'Cliente (Via WhatsApp)', ?, ?)
+            ''', (codigo, telefone, text))
+            conn.commit()
+            conn.close()
+            return jsonify({'status': 'salvo no chat'})
+            
+        return jsonify({'status': 'sem codigo de rastreio'})
+    except Exception as e:
+        print("Erro Webhook:", e)
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     print("=" * 60)
