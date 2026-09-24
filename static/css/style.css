@@ -967,9 +967,21 @@ button, input, select, textarea {
 }
 
 @media print {
-  body * { visibility: hidden; }
-  #printable-os, #printable-os * { visibility: visible; }
-  #printable-os { position: absolute; left: 0; top: 0; width: 100%; display: block !important; }
+  body > :not(#printable-os) { display: none !important; }
+  #printable-os { 
+    display: block !important; 
+    position: relative !important; 
+    left: 0; 
+    top: 0; 
+    width: 100%; 
+  }
+  body, html {
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    margin: 0;
+    padding: 0;
+  }
 }
 
 /* --- CHAT FLUTUANTE --- */
