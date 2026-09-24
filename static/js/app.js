@@ -1260,7 +1260,7 @@ async function loadKanbanBoard() {
     const res = await fetch('/api/pedidos', {
       headers: { 'X-Admin-Token': state.adminToken }
     });
-    const peds = await res.json();
+    const peds = await res.json(); state.pedidosCache = peds;
 
     const analise = peds.filter(p => p.status_producao === 'Em Análise de Arte');
     const impressao = peds.filter(p => p.status_producao === 'Em Impressão');
@@ -1318,7 +1318,7 @@ async function loadAdminPedidos() {
     const res = await fetch(`/api/pedidos?search=${encodeURIComponent(search)}&status=${encodeURIComponent(status)}`, {
       headers: { 'X-Admin-Token': state.adminToken }
     });
-    const peds = await res.json();
+    const peds = await res.json(); state.pedidosCache = peds;
 
     document.getElementById('admin-pedidos-tbody').innerHTML = peds.map(p => `
       <tr>
@@ -1347,6 +1347,7 @@ async function loadAdminPedidos() {
         </td>
         <td>
           <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" onclick="verArquivosPedido(${p.id})" title="Ver Arquivos da Arte"><i class="fa-solid fa-folder-open"></i></button>
             <button class="btn btn-secondary btn-sm" onclick="imprimirOS(${p.id})" title="Imprimir Ordem de Serviço"><i class="fa-solid fa-print"></i></button>
             <button onclick="abrirChatWidget('${p.codigo_pedido}', '${p.cliente_telefone}', '${p.cliente_nome}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Chat Interno">
               <i class="fa-solid fa-comments"></i>
