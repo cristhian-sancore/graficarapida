@@ -1601,24 +1601,12 @@ def redefinir_senha_cliente():
     senha_hash = generate_password_hash(nova_senha)
 
     cursor.execute('UPDATE clientes SET senha = ? WHERE id = ?', (senha_hash, cliente_id))
-    
-    cursor.execute('SELECT * FROM configuracoes LIMIT 1')
-    config_row = cursor.fetchone()
     conn.commit()
     conn.close()
 
-    if cliente['telefone']:
-        mensagem = f"Olá {cliente['nome']}! Sua senha de acesso ao portal da gráfica foi redefinida.\n\nSua nova senha é: *{nova_senha}*\n\nAcesse nosso site para fazer login."
-        if config_row:
-            send_evolution_whatsapp(
-                numero=cliente['telefone'], 
-                mensagem=mensagem,
-                custom_url=config_row['evolution_api_url'],
-                custom_key=config_row['evolution_api_key'],
-                custom_instance=config_row['evolution_instance']
-            )
-        else:
-            send_evolution_whatsapp(numero=cliente['telefone'], mensagem=mensagem)
+    if dict(cliente).get('telefone'):
+        mensagem = f"Olá {dict(cliente).get('nome', '')}! Sua senha de acesso ao portal da gráfica foi redefinida.\n\nSua nova senha é: *{nova_senha}*\n\nAcesse nosso site para fazer login."
+        send_evolution_whatsapp(numero=dict(cliente).get('telefone'), mensagem=mensagem)
 
     return jsonify({'message': 'Senha redefinida com sucesso e enviada por WhatsApp!'})
 
