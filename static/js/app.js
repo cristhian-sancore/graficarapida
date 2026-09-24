@@ -1367,7 +1367,10 @@ async function imprimirOS(pedidoId) {
 
     document.getElementById('os-total').innerText = `R$ ${p.total.toFixed(2).replace('.', ',')}`;
 
+    const el = document.getElementById('printable-os');
+    el.style.display = 'block';
     window.print();
+    setTimeout(() => { el.style.display = 'none'; }, 1000);
   } catch (err) {
     console.error('Erro OS:', err);
   }

@@ -969,7 +969,7 @@ button, input, select, textarea {
 @media print {
   body * { visibility: hidden; }
   #printable-os, #printable-os * { visibility: visible; }
-  #printable-os { position: absolute; left: 0; top: 0; width: 100%; }
+  #printable-os { position: absolute; left: 0; top: 0; width: 100%; display: block !important; }
 }
 
 /* --- CHAT FLUTUANTE --- */
