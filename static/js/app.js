@@ -1623,7 +1623,8 @@ async function loadAdminCupons() {
         <td>R$ ${c.valor_minimo.toFixed(2).replace('.', ',')}</td>
         <td>${c.usos_atuais} / ${c.limite_usos}</td>
         <td><span class="badge ${c.ativo ? 'badge-success' : 'badge-danger'}">${c.ativo ? 'Ativo' : 'Inativo'}</span></td>
-        <td>
+        <td style="white-space: nowrap;">
+          <button class="btn btn-secondary btn-sm" onclick='editarCupomAdmin(${JSON.stringify(c)})'><i class="fa-solid fa-pen"></i></button>
           <button class="btn btn-secondary btn-sm" style="color: var(--danger);" onclick="deletarCupomAdmin(${c.id})"><i class="fa-solid fa-trash"></i></button>
         </td>
       </tr>
@@ -1634,16 +1635,34 @@ async function loadAdminCupons() {
 }
 
 function openCupomModal() {
+  document.getElementById('cupom-id').value = '';
+  document.getElementById('cupom-codigo').value = '';
+  document.getElementById('cupom-pct').value = '';
+  document.getElementById('cupom-min').value = '';
+  document.getElementById('cupom-limite').value = '';
+  document.getElementById('cupom-ativo').checked = true;
+  openModal('modal-admin-cupom');
+}
+
+function editarCupomAdmin(cupom) {
+  document.getElementById('cupom-id').value = cupom.id;
+  document.getElementById('cupom-codigo').value = cupom.codigo;
+  document.getElementById('cupom-pct').value = cupom.porcentagem_desconto;
+  document.getElementById('cupom-min').value = cupom.valor_minimo;
+  document.getElementById('cupom-limite').value = cupom.limite_usos;
+  document.getElementById('cupom-ativo').checked = cupom.ativo === 1;
   openModal('modal-admin-cupom');
 }
 
 async function salvarCupomAdmin(e) {
   e.preventDefault();
   const payload = {
+    id: document.getElementById('cupom-id').value || null,
     codigo: document.getElementById('cupom-codigo').value,
     porcentagem_desconto: parseFloat(document.getElementById('cupom-pct').value),
     valor_minimo: parseFloat(document.getElementById('cupom-min').value),
-    limite_usos: parseInt(document.getElementById('cupom-limite').value)
+    limite_usos: parseInt(document.getElementById('cupom-limite').value),
+    ativo: document.getElementById('cupom-ativo').checked
   };
 
   try {

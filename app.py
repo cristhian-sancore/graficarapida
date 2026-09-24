@@ -1411,13 +1411,24 @@ def api_cupons():
             return jsonify({'error': 'Acesso restrito ao administrador.'}), 403
 
         data = request.json
-        cursor.execute('''
-            INSERT INTO cupons (codigo, porcentagem_desconto, valor_minimo, limite_usos)
-            VALUES (?, ?, ?, ?)
-        ''', (data.get('codigo').upper().strip(), float(data.get('porcentagem_desconto', 10)), float(data.get('valor_minimo', 0)), int(data.get('limite_usos', 100))))
+        cupom_id = data.get('id')
+        if cupom_id:
+            ativo_val = 1 if data.get('ativo', True) else 0
+            cursor.execute('''
+                UPDATE cupons SET codigo = ?, porcentagem_desconto = ?, valor_minimo = ?, limite_usos = ?, ativo = ?
+                WHERE id = ?
+            ''', (data.get('codigo').upper().strip(), float(data.get('porcentagem_desconto', 10)), float(data.get('valor_minimo', 0)), int(data.get('limite_usos', 100)), ativo_val, cupom_id))
+            msg = 'Cupom atualizado!'
+        else:
+            cursor.execute('''
+                INSERT INTO cupons (codigo, porcentagem_desconto, valor_minimo, limite_usos)
+                VALUES (?, ?, ?, ?)
+            ''', (data.get('codigo').upper().strip(), float(data.get('porcentagem_desconto', 10)), float(data.get('valor_minimo', 0)), int(data.get('limite_usos', 100))))
+            msg = 'Cupom criado!'
+            
         conn.commit()
         conn.close()
-        return jsonify({'message': 'Cupom criado!'}), 201
+        return jsonify({'message': msg}), 201
 
     elif request.method == 'DELETE':
         token = request.headers.get('X-Admin-Token')

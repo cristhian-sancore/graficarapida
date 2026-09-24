@@ -252,7 +252,7 @@
         <div class="sidebar-item" onclick="switchAdminTab('pedidos', this)">
           <i class="fa-solid fa-receipt"></i> Lista Pedidos
         </div>
-        <div class="sidebar-item" onclick="switchAdminTab('whatsapp', this)">
+        <div class="sidebar-item" id="nav-btn-whatsapp" onclick="switchAdminTab('whatsapp', this)">
           <i class="fa-brands fa-whatsapp"></i> WhatsApp Inbox
           <span id="badge-whatsapp-unread" class="badge badge-danger" style="display: none; border-radius: 50%; padding: 2px 6px; font-size: 0.75rem; margin-left: auto;">0</span>
         </div>
@@ -1252,6 +1252,7 @@
       </div>
       <div class="modal-body">
         <form onsubmit="salvarCupomAdmin(event)">
+          <input type="hidden" id="cupom-id">
           <div style="margin-bottom: 15px;">
             <label style="display: block; font-weight: 600; margin-bottom: 5px;">Código do Cupom</label>
             <input type="text" class="form-control" id="cupom-codigo" style="text-transform: uppercase;" required>
@@ -1267,6 +1268,11 @@
           <div style="margin-bottom: 20px;">
             <label style="display: block; font-weight: 600; margin-bottom: 5px;">Limite de Usos Totais</label>
             <input type="number" class="form-control" id="cupom-limite" required>
+          </div>
+          <div style="margin-bottom: 20px;">
+            <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer;">
+              <input type="checkbox" id="cupom-ativo" checked> Cupom Ativo
+            </label>
           </div>
           <button type="submit" class="btn btn-primary" style="width: 100%;">Salvar Cupom</button>
         </form>
@@ -1428,6 +1434,6 @@
   </div>
 
   <!-- JavaScript Main App -->
-  <script src="/static/js/app.js?v=2.97"></script>
+  <script src="/static/js/app.js?v=2.98"></script>
 </body>
 </html>
