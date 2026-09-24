@@ -1601,7 +1601,7 @@ def redefinir_senha_cliente():
     nova_senha = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
     senha_hash = generate_password_hash(nova_senha)
 
-    cursor.execute('UPDATE clientes SET senha = ? WHERE id = ?', (senha_hash, cliente_id))
+    cursor.execute('UPDATE clientes SET senha_hash = ? WHERE id = ?', (senha_hash, cliente_id))
     conn.commit()
     conn.close()
 

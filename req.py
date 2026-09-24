@@ -1,71 +1,42 @@
 import urllib.request, json, urllib.error
 import io
+import time
+import sys
 
-stack_file = """version: '3.8'
+# 1. Esperar o GitHub Actions concluir o build da imagem
+print("Verificando status do GitHub Actions...")
+while True:
+    try:
+        req_gh = urllib.request.Request('https://api.github.com/repos/cristhian-sancore/graficarapida/actions/runs?per_page=1')
+        req_gh.add_header('User-Agent', 'Mozilla/5.0')
+        res_gh = urllib.request.urlopen(req_gh)
+        data = json.loads(res_gh.read().decode('utf-8'))
+        
+        runs = data.get('workflow_runs', [])
+        if not runs:
+            print("Nenhum workflow encontrado, prosseguindo...")
+            break
+            
+        latest_run = runs[0]
+        status = latest_run.get('status')
+        conclusion = latest_run.get('conclusion')
+        
+        if status == 'completed':
+            if conclusion == 'success':
+                print(f"Workflow {latest_run['id']} concluído com sucesso!")
+            else:
+                print(f"AVISO: Workflow {latest_run['id']} terminou com status: {conclusion}")
+            break
+        else:
+            print(f"Workflow {latest_run['id']} em andamento (status: {status}). Aguardando 15 segundos...")
+            time.sleep(15)
+    except Exception as e:
+        print("Erro ao verificar GitHub API, ignorando e prosseguindo:", e)
+        break
 
-services:
-  # BANCO DE DADOS POSTGRESQL (Sem expor porta externa 5432 para evitar conflitos no host)
-  postgres-db:
-    image: postgres:15-alpine
-    container_name: grafica_postgres
-    restart: always
-    environment:
-      POSTGRES_DB: graficadb
-      POSTGRES_USER: graficauser
-      POSTGRES_PASSWORD: graficapassword2026
-    networks:
-      - grafica
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U graficauser -d graficadb"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  # APLICAÇÃO WEB DA GRÁFICA RÁPIDA
-  grafica-express:
-    image: ghcr.io/cristhian-sancore/graficarapida:latest
-    container_name: grafica_rapida_portainer
-    restart: always
-    ports:
-      - "8050:8050"
-    environment:
-      - PORT=8050
-      - FLASK_ENV=production
-      - DATABASE_URL=postgresql://graficauser:graficapassword2026@postgres-db:5432/graficadb
-    depends_on:
-      postgres-db:
-        condition: service_healthy
-    networks:
-      grafica:
-      rede:
-        aliases:
-          - grafica
-          - grafica-express
-          - grafica_express
-          - grafica-rapida
-          - grafica_rapida
-          - grafica_rapida_express
-          - grafica_rapida_portainer
-          - grafica_rapida_app
-    volumes:
-      - grafica_uploads_data:/app/static/uploads
-
-networks:
-  grafica:
-    name: grafica
-    driver: bridge
-  rede:
-    name: rede
-    external: true
-
-volumes:
-  postgres_data:
-    driver: local
-  grafica_uploads_data:
-    driver: local
-"""
+# 2. Atualizar stack no Portainer
+with open('docker-compose.portainer.yml', 'r', encoding='utf-8') as f:
+    stack_file = f.read()
 
 data=json.dumps({
   'StackFileContent': stack_file,
@@ -85,9 +56,11 @@ req=urllib.request.Request(
 )
 
 try:
+    print("Enviando comando para o Portainer...")
     res = urllib.request.urlopen(req)
     print("SUCCESS")
     print(res.read().decode('utf-8'))
 except urllib.error.HTTPError as e:
     print('HTTP ERROR', e.code)
     print(e.read().decode('utf-8'))
+
