@@ -1647,54 +1647,58 @@ def api_chat_get(codigo):
 
 @app.route('/api/chat/<path:codigo>', methods=['POST'])
 def api_chat_post(codigo):
-    token_admin = request.headers.get('X-Admin-Token')
-    token_cliente = request.headers.get('X-Client-Token')
-    
-    if not token_admin and not token_cliente:
-        return jsonify({'error': 'Acesso negado'}), 401
+    try:
+        token_admin = request.headers.get('X-Admin-Token')
+        token_cliente = request.headers.get('X-Client-Token')
         
-    data = request.json
-    mensagem = data.get('mensagem', '').strip()
-    telefone = data.get('telefone', '')
-    
-    if not mensagem:
-        return jsonify({'error': 'Mensagem vazia'}), 400
+        if not token_admin and not token_cliente:
+            return jsonify({'error': 'Acesso negado'}), 401
+            
+        data = request.json
+        mensagem = data.get('mensagem', '').strip()
+        telefone = data.get('telefone', '')
         
-    remetente_tipo = 'admin' if token_admin else 'cliente'
-    
-    if remetente_tipo == 'admin':
-        admin = get_current_admin(token_admin)
-        remetente_nome = admin['nome'] if admin else 'Atendimento'
-    else:
-        cli = get_current_client(token_cliente)
-        remetente_nome = cli['nome'] if cli else 'Cliente'
+        if not mensagem:
+            return jsonify({'error': 'Mensagem vazia'}), 400
+            
+        remetente_tipo = 'admin' if token_admin else 'cliente'
         
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (codigo, remetente_tipo, remetente_nome, telefone, mensagem))
-    conn.commit()
-    conn.close()
-    
-    # Se for admin, notifica o cliente via Evolution API
-    if remetente_tipo == 'admin' and telefone:
-        msg_wpp = f"💬 *Gráfica Rápida Express*\nNova mensagem sobre o {codigo}:\n\n_{mensagem}_\n\nAcesse o site para responder!"
-        send_evolution_whatsapp(telefone, msg_wpp)
-        
-    # Se for cliente, notifica a gráfica via Evolution API
-    if remetente_tipo == 'cliente':
+        if remetente_tipo == 'admin':
+            admin = get_current_admin(token_admin)
+            remetente_nome = admin['nome'] if admin else 'Atendimento'
+        else:
+            cli = get_current_client(token_cliente)
+            remetente_nome = cli['nome'] if cli else 'Cliente'
+            
         conn = get_db()
         cursor = conn.cursor()
-        cursor.execute('SELECT whatsapp FROM configuracoes LIMIT 1')
-        cfg = cursor.fetchone()
+        cursor.execute('''
+            INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (codigo, remetente_tipo, remetente_nome, telefone, mensagem))
+        conn.commit()
         conn.close()
-        if cfg and cfg['whatsapp']:
-            msg_wpp_admin = f"🔔 *Alerta de Mensagem*\nO cliente {remetente_nome} enviou uma mensagem sobre o {codigo}:\n\n_{mensagem}_\n\nAcesse o painel para responder!"
-            send_evolution_whatsapp(cfg['whatsapp'], msg_wpp_admin)
-    
-    return jsonify({'message': 'Mensagem enviada'})
+        
+        # Se for admin, notifica o cliente via Evolution API
+        if remetente_tipo == 'admin' and telefone:
+            msg_wpp = f"💬 *Gráfica Rápida Express*\nNova mensagem sobre o {codigo}:\n\n_{mensagem}_\n\nAcesse o site para responder!"
+            send_evolution_whatsapp(telefone, msg_wpp)
+            
+        # Se for cliente, notifica a gráfica via Evolution API
+        if remetente_tipo == 'cliente':
+            conn = get_db()
+            cursor = conn.cursor()
+            cursor.execute('SELECT whatsapp FROM configuracoes LIMIT 1')
+            cfg = cursor.fetchone()
+            conn.close()
+            if cfg and dict(cfg).get('whatsapp'):
+                msg_wpp_admin = f"🔔 *Alerta de Mensagem*\nO cliente {remetente_nome} enviou uma mensagem sobre o {codigo}:\n\n_{mensagem}_\n\nAcesse o painel para responder!"
+                send_evolution_whatsapp(dict(cfg)['whatsapp'], msg_wpp_admin)
+        
+        return jsonify({'message': 'Mensagem enviada'})
+    except Exception as e:
+        import traceback
+        return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
 
 @app.route('/api/webhook/evolution', methods=['POST'])
 def webhook_evolution():

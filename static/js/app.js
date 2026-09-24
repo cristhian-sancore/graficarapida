@@ -2002,7 +2002,7 @@ async function carregarMensagensChat() {
   if (state.clientToken) headers["X-Client-Token"] = state.clientToken;
   
   try {
-    const res = await fetch(`/api/chat/${chatWidgetRef}`, { headers });
+    const res = await fetch(`/api/chat/${encodeURIComponent(chatWidgetRef)}`, { headers });
     if (!res.ok) return;
     const mensagens = await res.json();
     
@@ -2052,7 +2052,7 @@ async function enviarMensagemChat() {
   
   try {
     input.value = "";
-    const res = await fetch(`/api/chat/${chatWidgetRef}`, {
+    const res = await fetch(`/api/chat/${encodeURIComponent(chatWidgetRef)}`, {
       method: "POST",
       headers,
       body: JSON.stringify(body)
