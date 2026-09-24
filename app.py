@@ -152,7 +152,11 @@ def get_db():
 
 def safe_add_column(cursor, conn, table, column_def):
     try:
-        cursor.execute(f'ALTER TABLE {table} ADD COLUMN {column_def}')
+        is_pg = getattr(conn, 'is_postgres', False) or getattr(cursor, 'is_postgres', False)
+        if is_pg:
+            cursor.execute(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column_def}')
+        else:
+            cursor.execute(f'ALTER TABLE {table} ADD COLUMN {column_def}')
         conn.commit()
     except Exception:
         conn.rollback()

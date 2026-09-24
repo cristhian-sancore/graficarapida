@@ -385,31 +385,40 @@ async function loadConfig() {
     const res = await fetch('/api/config');
     state.config = await res.json();
     
-    document.getElementById('brand-name').innerText = state.config.nome_grafica || 'Gráfica Rápida Express';
-    document.getElementById('top-bar-aviso').innerText = state.config.aviso_topo || '';
-    document.getElementById('banner-titulo').innerText = state.config.banner_titulo || '';
-    document.getElementById('banner-subtitulo').innerText = state.config.banner_subtitulo || '';
+    const setTxt = (id, text) => {
+      const el = document.getElementById(id);
+      if (el) el.innerText = text;
+    };
+    const setVal = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.value = val;
+    };
+
+    setTxt('brand-name', state.config.nome_grafica || 'Gráfica Rápida Express');
+    setTxt('top-bar-aviso', state.config.aviso_topo || '');
+    setTxt('banner-titulo', state.config.banner_titulo || '');
+    setTxt('banner-subtitulo', state.config.banner_subtitulo || '');
     
-    document.getElementById('cfg-nome-grafica').value = state.config.nome_grafica || '';
-    document.getElementById('cfg-whatsapp').value = state.config.whatsapp || '';
-    document.getElementById('cfg-chave-pix').value = state.config.chave_pix || '';
-    document.getElementById('cfg-banner-titulo').value = state.config.banner_titulo || '';
-    document.getElementById('cfg-banner-subtitulo').value = state.config.banner_subtitulo || '';
-    document.getElementById('cfg-aviso-topo').value = state.config.aviso_topo || '';
+    setVal('cfg-nome-grafica', state.config.nome_grafica || '');
+    setVal('cfg-whatsapp', state.config.whatsapp || '');
+    setVal('cfg-chave-pix', state.config.chave_pix || '');
+    setVal('cfg-banner-titulo', state.config.banner_titulo || '');
+    setVal('cfg-banner-subtitulo', state.config.banner_subtitulo || '');
+    setVal('cfg-aviso-topo', state.config.aviso_topo || '');
+    
     const whInput = document.getElementById('cfg-webhook-url');
     if (whInput && !whInput.value) {
       whInput.value = window.location.origin + "/api/webhook/evolution";
     }
-    document.getElementById('cfg-desconto-pix').value = state.config.desconto_pix || 5.0;
-    document.getElementById('cfg-taxa-entrega').value = state.config.taxa_entrega || 15.0;
-    document.getElementById('pix-key-input').value = state.config.chave_pix || 'pix@graficarapidaexpress.com.br';
+    
+    setVal('cfg-desconto-pix', state.config.desconto_pix || 5.0);
+    setVal('cfg-taxa-entrega', state.config.taxa_entrega || 15.0);
+    setVal('pix-key-input', state.config.chave_pix || 'pix@graficarapidaexpress.com.br');
 
-    if (document.getElementById('cfg-evolution-url')) {
-      document.getElementById('cfg-evolution-url').value = state.config.evolution_api_url || '';
-      document.getElementById('cfg-evolution-key').value = state.config.evolution_api_key || '';
-      document.getElementById('cfg-evolution-instance').value = state.config.evolution_instance || '';
-      document.getElementById('cfg-evolution-active').value = state.config.validar_whatsapp_ativo ? '1' : '0';
-    }
+    setVal('cfg-evolution-url', state.config.evolution_api_url || '');
+    setVal('cfg-evolution-key', state.config.evolution_api_key || '');
+    setVal('cfg-evolution-instance', state.config.evolution_instance || '');
+    setVal('cfg-evolution-active', state.config.validar_whatsapp_ativo ? '1' : '0');
   } catch (err) {
     console.error('Erro ao carregar configurações:', err);
   }
@@ -1821,7 +1830,7 @@ async function loadAdminClientes() {
         <td><span class="badge badge-info">${c.total_pedidos} pedidos</span></td>
         <td style="font-weight: 800; color: var(--primary);">R$ ${(c.total_gasto || 0).toFixed(2).replace('.', ',')}</td>
         <td style="display: flex; gap: 5px; flex-wrap: wrap;">
-          <button onclick="abrirConversaInterna('GERAL', '${c.telefone.replace(/\D/g, \'\')}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Conversar">
+          <button onclick="abrirConversaInterna('GERAL', '${(c.telefone||'').replace(/\D/g, '')}')" class="btn btn-secondary btn-sm" style="color: #25d366;" title="Conversar">
             <i class="fa-brands fa-whatsapp"></i>
           </button>
           <button class="btn btn-primary btn-sm" onclick="abrirModalEditarCliente(${c.id})" title="Editar">
