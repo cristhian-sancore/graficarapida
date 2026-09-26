@@ -1992,9 +1992,7 @@ def webhook_evolution():
         telefone = remote_jid.split('@')[0]
         push_name = data.get('data', {}).get('pushName') or f'Cliente {telefone}'
         
-        # Ignora mensagens de nós mesmos (se o remetente for fromMe = true, embora dependa do payload)
-        if data.get('data', {}).get('key', {}).get('fromMe'):
-            return jsonify({'status': 'ignorado, fromMe'}), 200
+        is_from_me = data.get('data', {}).get('key', {}).get('fromMe')
 
         import re
         from datetime import datetime, timedelta
@@ -2015,7 +2013,22 @@ def webhook_evolution():
             codigo = last_ref[0] if last_ref and last_ref[0] else "GERAL"
         
         
-        # 1. Salva a mensagem recebida
+        if is_from_me:
+            # Se a mensagem foi enviada pelo celular do admin ou pela API, salva se nao for duplicada
+            if cursor.is_postgres:
+                cursor.execute("SELECT id FROM mensagens_chat WHERE telefone_cliente = %s AND mensagem = %s AND remetente_tipo = 'admin' ORDER BY id DESC LIMIT 1", (telefone, text))
+            else:
+                cursor.execute("SELECT id FROM mensagens_chat WHERE telefone_cliente = ? AND mensagem = ? AND remetente_tipo = 'admin' ORDER BY id DESC LIMIT 1", (telefone, text))
+            if not cursor.fetchone():
+                cursor.execute('''
+                    INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem)
+                    VALUES (?, 'admin', 'Atendente (Celular)', ?, ?)
+                ''', (codigo, telefone, text))
+                conn.commit()
+            conn.close()
+            return jsonify({'status': 'sucesso, fromMe processado'}), 200
+
+        # 1. Salva a mensagem recebida do cliente
         cursor.execute('''
             INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem)
             VALUES (?, 'cliente', ?, ?, ?)
