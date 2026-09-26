@@ -2036,8 +2036,41 @@ def webhook_evolution():
         conn.commit()
 
         # 2. Automação do Bot
-        if codigo != "GERAL":
-            # Tentar achar o status do pedido/orçamento
+        if cursor.is_postgres:
+            cursor.execute("SELECT remetente_nome, mensagem, data_envio FROM mensagens_chat WHERE telefone_cliente = %s AND remetente_tipo = 'admin' ORDER BY id DESC LIMIT 1", (telefone,))
+        else:
+            cursor.execute("SELECT remetente_nome, mensagem, data_envio FROM mensagens_chat WHERE telefone_cliente = ? AND remetente_tipo = 'admin' ORDER BY id DESC LIMIT 1", (telefone,))
+        
+        last_admin = cursor.fetchone()
+        
+        # Checar tempo e remetente
+        diff = 9999
+        remetente = ""
+        last_msg = ""
+        
+        if last_admin:
+            remetente = dict(last_admin).get('remetente_nome') if hasattr(last_admin, 'keys') else last_admin[0]
+            last_msg = dict(last_admin).get('mensagem') if hasattr(last_admin, 'keys') else last_admin[1]
+            dt_str = dict(last_admin).get('data_envio') if hasattr(last_admin, 'keys') else last_admin[2]
+            if dt_str:
+                try:
+                    if isinstance(dt_str, str):
+                        last_time = datetime.strptime(dt_str.split('.')[0].split('+')[0], "%Y-%m-%d %H:%M:%S")
+                    else:
+                        last_time = dt_str.replace(tzinfo=None)
+                    diff = (datetime.utcnow() - last_time).total_seconds()
+                except:
+                    pass
+        
+        # Se um humano (Atendente ou Painel) respondeu há menos de 20 minutos (1200s), PAUSA o bot.
+        if remetente and remetente != 'Assistente Virtual' and diff < 1200:
+            conn.close()
+            return jsonify({'status': 'sucesso, bot pausado devido a interacao humana'})
+            
+        bot_reply = None
+        
+        if match:
+            # Cliente digitou um código específico com a hashtag
             prefix = codigo.split('-')[0]
             status_msg = ""
             if prefix == "#GF":
@@ -2055,40 +2088,10 @@ def webhook_evolution():
             
             if status_msg:
                 bot_reply = f"🤖 *Assistente Automático*\nOlá! Encontrei as informações solicitadas:\n\n{status_msg}\n\nSe precisar falar com um humano, mande outra mensagem."
-                send_evolution_whatsapp(telefone, bot_reply)
-                # Opcional: salvar a resposta do bot no chat
-                cursor.execute("INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem) VALUES (?, 'admin', 'Assistente Virtual', ?, ?)", (codigo, telefone, bot_reply))
-                conn.commit()
         else:
-            if cursor.is_postgres:
-                cursor.execute("SELECT remetente_nome, mensagem, data_envio FROM mensagens_chat WHERE telefone_cliente = %s AND remetente_tipo = 'admin' ORDER BY id DESC LIMIT 1", (telefone,))
-            else:
-                cursor.execute("SELECT remetente_nome, mensagem, data_envio FROM mensagens_chat WHERE telefone_cliente = ? AND remetente_tipo = 'admin' ORDER BY id DESC LIMIT 1", (telefone,))
-            
-            last_admin = cursor.fetchone()
-            bot_reply = None
-            
-            # Checar tempo
-            diff = 9999
-            remetente = ""
-            last_msg = ""
-            
-            if last_admin:
-                remetente = dict(last_admin).get('remetente_nome') if hasattr(last_admin, 'keys') else last_admin[0]
-                last_msg = dict(last_admin).get('mensagem') if hasattr(last_admin, 'keys') else last_admin[1]
-                dt_str = dict(last_admin).get('data_envio') if hasattr(last_admin, 'keys') else last_admin[2]
-                if dt_str:
-                    try:
-                        if isinstance(dt_str, str):
-                            last_time = datetime.strptime(dt_str.split('.')[0].split('+')[0], "%Y-%m-%d %H:%M:%S")
-                        else:
-                            last_time = dt_str.replace(tzinfo=None)
-                        diff = (datetime.utcnow() - last_time).total_seconds()
-                    except:
-                        pass
-            
-            if diff > 1800:
-                # Passou muito tempo. Enviar menu inicial
+            # Fluxo normal do menu
+            if diff > 1200:
+                # Passou 20 min desde a ultima interacao do admin. Resetar para menu inicial
                 bot_reply = "🤖 *Assistente Automático - Gráfica Rápida Express*\nOlá! Seja bem-vindo(a)! Como posso ajudar você hoje?\n\nDigite o *NÚMERO* da opção desejada:\n1️⃣ - Abrir um novo Pedido/Orçamento\n2️⃣ - Verificar o status do meu pedido\n3️⃣ - Falar com atendente humano"
             elif remetente == 'Assistente Virtual':
                 # Bot estava falando, processar estado
@@ -2108,7 +2111,6 @@ def webhook_evolution():
                 
                 elif "Descreva o que você precisa fazer" in last_msg:
                     # Encontrar o nome do cliente!
-                    # O nome foi a mensagem do cliente antes do bot perguntar a descricao
                     if cursor.is_postgres:
                         cursor.execute("SELECT mensagem FROM mensagens_chat WHERE telefone_cliente = %s AND remetente_tipo = 'cliente' ORDER BY id DESC LIMIT 1 OFFSET 1", (telefone,))
                     else:
@@ -2130,7 +2132,7 @@ def webhook_evolution():
             
             if bot_reply:
                 send_evolution_whatsapp(telefone, bot_reply)
-                cursor.execute("INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem) VALUES (?, 'admin', 'Assistente Virtual', ?, ?)", ('GERAL', telefone, bot_reply))
+                cursor.execute("INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem) VALUES (?, 'admin', 'Assistente Virtual', ?, ?)", (codigo, telefone, bot_reply))
                 conn.commit()
 
         conn.close()
