@@ -1913,6 +1913,51 @@ def api_chat_post(codigo):
         import traceback
         return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
 
+
+def buscar_status_por_telefone(cursor, telefone):
+    num_digits = ''.join(c for c in str(telefone) if c.isdigit())
+    sufixo = num_digits[-8:] if len(num_digits) >= 8 else num_digits
+    pattern = f"%{sufixo}%"
+    
+    if getattr(cursor, 'is_postgres', False):
+        cursor.execute("SELECT codigo_pedido, status_producao, total FROM pedidos WHERE cliente_telefone LIKE %s ORDER BY id DESC LIMIT 5", (pattern,))
+    else:
+        cursor.execute("SELECT codigo_pedido, status_producao, total FROM pedidos WHERE cliente_telefone LIKE ? ORDER BY id DESC LIMIT 5", (pattern,))
+    rows_pedidos = cursor.fetchall()
+    
+    if getattr(cursor, 'is_postgres', False):
+        cursor.execute("SELECT codigo_orcamento, status, valor_estimado FROM orcamentos WHERE cliente_telefone LIKE %s ORDER BY id DESC LIMIT 5", (pattern,))
+    else:
+        cursor.execute("SELECT codigo_orcamento, status, valor_estimado FROM orcamentos WHERE cliente_telefone LIKE ? ORDER BY id DESC LIMIT 5", (pattern,))
+    rows_orcamentos = cursor.fetchall()
+    
+    if not rows_pedidos and not rows_orcamentos:
+        return "🤖 Não encontrei pedidos ou orçamentos associados ao seu número em nosso sistema.\n\nSe preferir, digite o código do seu pedido com a hashtag na frente (ex: *#GF-1234* ou *#ORC-1234*) ou digite *3* para falar com um atendente."
+        
+    res = "🤖 *Assistente Automático*\nLocalizei os seguintes registros vinculados ao seu telefone:\n"
+    
+    if rows_pedidos:
+        res += "\n📦 *Seus Pedidos:*\n"
+        for r in rows_pedidos:
+            d = dict(r) if hasattr(r, 'keys') else {'codigo_pedido': r[0], 'status_producao': r[1], 'total': r[2]}
+            cod = d.get('codigo_pedido') or ''
+            st = d.get('status_producao') or ''
+            tot = d.get('total') or 0.0
+            res += f"• *{cod}*: {st} (R$ {tot:.2f})\n".replace('.', ',')
+            
+    if rows_orcamentos:
+        res += "\n📋 *Seus Orçamentos:*\n"
+        for r in rows_orcamentos:
+            d = dict(r) if hasattr(r, 'keys') else {'codigo_orcamento': r[0], 'status': r[1], 'valor_estimado': r[2]}
+            cod = d.get('codigo_orcamento') or ''
+            st = d.get('status') or ''
+            val = d.get('valor_estimado') or 0.0
+            res += f"• *{cod}*: {st} (R$ {val:.2f})\n".replace('.', ',')
+            
+    res += "\nPara ver mais detalhes de algum item, basta enviar o código desejado (ex: *#GF-1234*)."
+    return res
+
+
 @app.route('/api/webhook/evolution', methods=['POST'])
 def webhook_evolution():
     # Recebe mensagens do cliente pelo WhatsApp e joga no chat do pedido
@@ -2153,7 +2198,7 @@ def webhook_evolution():
                     if user_text == '1':
                         bot_reply = "🤖 Certo! Para começarmos, qual o seu nome completo?"
                     elif user_text == '2':
-                        bot_reply = "🤖 Certo! Para verificar o status, basta digitar o código do seu pedido com a hashtag na frente (ex: #GF-1234 ou #ORC-1234)."
+                        bot_reply = buscar_status_por_telefone(cursor, telefone)
                     elif user_text == '3':
                         bot_reply = "🤖 Ok! Transferindo para um atendente. Por favor, aguarde um instante!"
                     else:
