@@ -778,7 +778,8 @@ def api_chat_telefone_post(telefone):
             file_bytes = base64.b64decode(b64_content)
             ext = file_name.split('.')[-1] if '.' in file_name else 'bin'
             saved_name = f"admin_{uuid.uuid4().hex[:8]}.{ext}"
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], saved_name)
+            from flask import current_app
+            filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], saved_name)
             with open(filepath, 'wb') as f:
                 f.write(file_bytes)
             media_path_db = f"/static/uploads/{saved_name}"
