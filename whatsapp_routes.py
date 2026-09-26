@@ -213,6 +213,47 @@ def api_chat_presenca(telefone):
                 break
     return jsonify({'digitando': is_active, 'tipo': pres_tipo, 'info': info_match, 'sufixo': sufixo})
 
+@whatsapp_bp.route('/api/chat/presenca/<path:telefone>', methods=['POST'])
+def api_chat_presenca_post(telefone):
+    """Envia sinal de 'digitando...' do admin para o cliente no WhatsApp."""
+    token_admin = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token_admin):
+        return jsonify({'error': 'Acesso negado'}), 401
+    
+    data = request.get_json(silent=True) or {}
+    presence_type = data.get('presence', 'composing')  # composing or paused
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT evolution_api_url, evolution_api_key, evolution_instance FROM configuracoes LIMIT 1')
+    cfg = cursor.fetchone()
+    conn.close()
+    
+    if cfg and dict(cfg).get('evolution_api_url'):
+        try:
+            import threading
+            def send_presence_async(url, apikey, instance, target_num, pres):
+                try:
+                    req_url = f"{url}/chat/sendPresence/{instance}"
+                    payload = {"number": target_num, "presence": pres, "delay": 1200}
+                    req = urllib.request.Request(req_url, method='POST')
+                    req.add_header('Content-Type', 'application/json')
+                    req.add_header('apikey', apikey)
+                    req.add_header('User-Agent', 'Mozilla/5.0')
+                    with urllib.request.urlopen(req, data=json.dumps(payload).encode('utf-8'), timeout=3, context=ctx_unverified) as res:
+                        pass
+                except Exception as e:
+                    print("Erro ao enviar presenca:", e)
+            
+            threading.Thread(target=send_presence_async, args=(
+                dict(cfg)['evolution_api_url'], dict(cfg)['evolution_api_key'], 
+                dict(cfg)['evolution_instance'], telefone, presence_type
+            )).start()
+        except Exception as e:
+            print("Erro despachando presenca:", e)
+    
+    return jsonify({'status': 'ok'})
+
 
 @whatsapp_bp.route('/api/webhook/evolution', methods=['POST'])
 def webhook_evolution():
