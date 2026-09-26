@@ -2086,10 +2086,6 @@ def webhook_evolution():
         if remetente_tipo == 'system':
             # Atendimento foi encerrado manualmente pelo admin.
             diff = 9999
-        elif remetente and remetente != 'Assistente Virtual' and diff < 1200:
-            # Se um humano (Atendente ou Painel) respondeu há menos de 20 minutos, PAUSA o bot.
-            conn.close()
-            return jsonify({'status': 'sucesso, bot pausado devido a interacao humana'})
             
         bot_reply = None
         
@@ -2099,9 +2095,9 @@ def webhook_evolution():
             if prefix == "#GF":
                 codigo_limpo = codigo.lstrip('#')
                 if cursor.is_postgres:
-                    cursor.execute('SELECT status_producao, total FROM pedidos WHERE codigo_pedido = %s OR codigo_pedido = %s', (codigo, codigo_limpo))
+                    cursor.execute('SELECT status_producao, total FROM pedidos WHERE codigo_pedido = %s OR codigo_pedido = %s OR codigo_pedido LIKE %s', (codigo, codigo_limpo, f"%{codigo_limpo}%"))
                 else:
-                    cursor.execute('SELECT status_producao, total FROM pedidos WHERE codigo_pedido = ? OR codigo_pedido = ?', (codigo, codigo_limpo))
+                    cursor.execute('SELECT status_producao, total FROM pedidos WHERE codigo_pedido = ? OR codigo_pedido = ? OR codigo_pedido LIKE ?', (codigo, codigo_limpo, f"%{codigo_limpo}%"))
                 row = cursor.fetchone()
                 if row:
                     row_dict = dict(row) if hasattr(row, 'keys') else {'status_producao': row[0], 'total': row[1]}
@@ -2112,9 +2108,9 @@ def webhook_evolution():
             elif prefix == "#ORC":
                 codigo_limpo = codigo.lstrip('#')
                 if cursor.is_postgres:
-                    cursor.execute('SELECT status, valor_estimado FROM orcamentos WHERE codigo_orcamento = %s OR codigo_orcamento = %s', (codigo, codigo_limpo))
+                    cursor.execute('SELECT status, valor_estimado FROM orcamentos WHERE codigo_orcamento = %s OR codigo_orcamento = %s OR codigo_orcamento LIKE %s', (codigo, codigo_limpo, f"%{codigo_limpo}%"))
                 else:
-                    cursor.execute('SELECT status, valor_estimado FROM orcamentos WHERE codigo_orcamento = ? OR codigo_orcamento = ?', (codigo, codigo_limpo))
+                    cursor.execute('SELECT status, valor_estimado FROM orcamentos WHERE codigo_orcamento = ? OR codigo_orcamento = ? OR codigo_orcamento LIKE ?', (codigo, codigo_limpo, f"%{codigo_limpo}%"))
                 row = cursor.fetchone()
                 if row:
                     row_dict = dict(row) if hasattr(row, 'keys') else {'status': row[0], 'valor_estimado': row[1]}
@@ -2124,6 +2120,10 @@ def webhook_evolution():
                     bot_reply = f"🤖 *Assistente Automático*\nNão encontrei nenhum orçamento com o código *{codigo}* em nosso sistema.\n\nPor favor, verifique se digitou o código corretamente ou digite *3* para falar com um atendente."
             else:
                 bot_reply = f"🤖 *Assistente Automático*\nRecebi o código *{codigo}*, mas não localizei registros associados a ele em nosso sistema.\n\nSe preferir, digite *3* para falar com um atendente."
+        elif remetente and remetente != 'Assistente Virtual' and diff < 1200:
+            # Se um humano (Atendente ou Painel) respondeu há menos de 20 minutos, PAUSA o bot.
+            conn.close()
+            return jsonify({'status': 'sucesso, bot pausado devido a interacao humana'})
         else:
             # Fluxo normal do menu
             if diff > 1200:
