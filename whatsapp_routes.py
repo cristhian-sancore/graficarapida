@@ -380,7 +380,7 @@ def webhook_evolution():
                             import base64
                             file_bytes = base64.b64decode(b64_content)
                             filename = f"whatsapp_{uuid.uuid4().hex[:8]}.{ext}"
-                            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                            filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
                             with open(filepath, 'wb') as f:
                                 f.write(file_bytes)
                             text = f"[MEDIA]:/static/uploads/{filename}"
