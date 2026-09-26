@@ -6,6 +6,15 @@ from datetime import datetime
 whatsapp_bp = Blueprint('whatsapp', __name__)
 ctx_unverified = ssl._create_unverified_context()
 
+
+def get_current_client(*args, **kwargs):
+    from app import get_current_client as _get
+    return _get(*args, **kwargs)
+
+def send_evolution_whatsapp(*args, **kwargs):
+    from app import send_evolution_whatsapp as _send
+    return _send(*args, **kwargs)
+
 def get_db():
     from app import get_db as _get_db
     return _get_db()
