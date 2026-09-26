@@ -2698,16 +2698,33 @@ async function carregarMensagensInbox() {
       const isMe = m.remetente_tipo === "admin";
       const alignClass = isMe ? "cliente" : "admin"; // Reusing chat widget classes (green for me)
       const time = new Date(m.data_envio).toLocaleTimeString([], {hour: "2-digit", minute:"2-digit"});
+      const readIcon = isMe ? (m.lida ? '<i class="fas fa-check-double ms-1" style="color: #60a5fa;" title="Mensagem lida pelo cliente"></i>' : '<i class="fas fa-check ms-1" style="color: #9ca3af;" title="Enviado"></i>') : '';
       
       return `
         <div class="chat-msg ${alignClass}" style="max-width: 70%; align-self: ${isMe ? "flex-end" : "flex-start"};">
           <div style="margin-top: 4px;">${renderChatMessageContent(m.mensagem)}</div>
-          <span class="chat-msg-time">${time}</span>
+          <span class="chat-msg-time">${time} ${readIcon}</span>
         </div>
       `;
     }).join("");
     
     container.scrollTop = container.scrollHeight;
+    
+    // Checar presença (se cliente está digitando)
+    try {
+      const presRes = await fetch(`/api/chat/presenca/${encodeURIComponent(currentInboxTel)}`);
+      if (presRes.ok) {
+        const presData = await presRes.json();
+        const subEl = document.getElementById("inbox-subtitle");
+        if (subEl) {
+          if (presData.digitando) {
+            subEl.innerHTML = '<span style="color: #10b981; font-weight: bold;"><i class="fas fa-pencil-alt me-1"></i> digitando...</span>';
+          } else {
+            subEl.innerText = "WhatsApp: " + currentInboxTel;
+          }
+        }
+      }
+    } catch(e) {}
     
     // Atualizar UI de Status e Atendente baseado nas mensagens
     const msgsAdminSystem = mensagens.filter(m => m.remetente_tipo === "admin" || m.remetente_tipo === "system");

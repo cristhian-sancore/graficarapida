@@ -645,6 +645,19 @@ def send_evolution_whatsapp(numero, mensagem, custom_url=None, custom_key=None, 
 
     ultimo_erro = "Falha ao enviar mensagem."
     for target_num in numeros_para_tentar:
+        # Presença real no WhatsApp: mandar sinal "digitando..." (composing) por 1.2s
+        try:
+            url_pres = f"{api_url}/chat/sendPresence/{instance}"
+            req_pres = urllib.request.Request(url_pres, method='POST')
+            req_pres.add_header('Content-Type', 'application/json')
+            req_pres.add_header('apikey', api_key)
+            req_pres.add_header('User-Agent', 'Mozilla/5.0')
+            payload_pres = json.dumps({"number": target_num, "presence": "composing", "delay": 1200}).encode('utf-8')
+            with urllib.request.urlopen(req_pres, data=payload_pres, timeout=3, context=ctx_unverified) as res_pres:
+                pass
+        except Exception:
+            pass
+
         if media_target:
             if media_type == 'audio':
                 endpoint = f"{api_url}/message/sendWhatsAppAudio/{instance}"
@@ -1958,6 +1971,25 @@ def buscar_status_por_telefone(cursor, telefone):
     return res
 
 
+CLIENT_PRESENCE = {}
+
+@app.route('/api/chat/presenca/<path:telefone>', methods=['GET'])
+def api_chat_presenca(telefone):
+    import time
+    num_limpo = ''.join(c for c in str(telefone) if c.isdigit())
+    sufixo = num_limpo[-8:] if len(num_limpo) >= 8 else num_limpo
+    
+    is_digitando = False
+    for k, info in list(CLIENT_PRESENCE.items()):
+        if sufixo in k:
+            pres = str(info.get('presence', '')).lower()
+            t_last = info.get('time', 0)
+            if pres in ['composing', 'recording', 'typing'] and (time.time() - t_last) < 10:
+                is_digitando = True
+                break
+    return jsonify({'digitando': is_digitando})
+
+
 @app.route('/api/webhook/evolution', methods=['POST'])
 def webhook_evolution():
     # Recebe mensagens do cliente pelo WhatsApp e joga no chat do pedido
@@ -1969,8 +2001,45 @@ def webhook_evolution():
             return jsonify({'status': 'ignorado'}), 200
             
         event_raw = str(data.get('event') or data.get('type') or '').strip().lower()
-        if event_raw and not any(k in event_raw for k in ['message', 'upsert', 'send']):
-            return jsonify({'status': 'ignorado, evento nao eh mensagem'}), 200
+        if event_raw and not any(k in event_raw for k in ['message', 'upsert', 'send', 'presence', 'update']):
+            return jsonify({'status': 'ignorado, evento nao suportado'}), 200
+
+        # 1. Tratar presença (cliente digitando no WhatsApp)
+        if 'presence' in event_raw:
+            data_payload = data.get('data', {})
+            remote_jid = (data_payload.get('id') or data_payload.get('remoteJid') or data.get('remoteJid') or '')
+            telefone = remote_jid.split('@')[0] if remote_jid else ''
+            presences = data_payload.get('presences', {})
+            pres_info = presences.get(remote_jid) if isinstance(presences, dict) else {}
+            if not pres_info and isinstance(presences, dict) and presences:
+                pres_info = list(presences.values())[0] if isinstance(list(presences.values())[0], dict) else {}
+            pres_state = (pres_info.get('lastKnownPresence') if isinstance(pres_info, dict) else '') or data_payload.get('presence') or ''
+            
+            if telefone:
+                import time
+                CLIENT_PRESENCE[telefone] = {
+                    'presence': str(pres_state).lower(),
+                    'time': time.time()
+                }
+            return jsonify({'status': 'sucesso, presenca'}), 200
+
+        # 2. Tratar atualização de leitura de mensagem (lida = 1 no DB)
+        if 'update' in event_raw and 'upsert' not in event_raw:
+            data_payload = data.get('data', {})
+            remote_jid = (data_payload.get('key', {}).get('remoteJid') or data_payload.get('remoteJid') or '')
+            telefone = remote_jid.split('@')[0] if remote_jid else ''
+            status_ack = str(data_payload.get('status') or '').upper()
+            
+            if telefone and any(st in status_ack for st in ['READ', '4', 'DELIVERY_ACK', '3']):
+                conn = get_db()
+                cursor = conn.cursor()
+                if cursor.is_postgres:
+                    cursor.execute("UPDATE mensagens_chat SET lida = 1 WHERE telefone_cliente = %s AND remetente_tipo = 'admin'", (telefone,))
+                else:
+                    cursor.execute("UPDATE mensagens_chat SET lida = 1 WHERE telefone_cliente = ? AND remetente_tipo = 'admin'", (telefone,))
+                conn.commit()
+                conn.close()
+                return jsonify({'status': 'sucesso, status lida atualizado'}), 200
             
         data_payload = data.get('data', {})
         if isinstance(data_payload, list):
@@ -2492,6 +2561,28 @@ def api_chat_telefone_read(telefone):
     else:
         cursor.execute("UPDATE mensagens_chat SET lida = 1 WHERE telefone_cliente = ? AND remetente_tipo = 'cliente'", (telefone,))
     conn.commit()
+
+    # Mandar sinal de leitura para o WhatsApp via Evolution API (2 tiques azuis)
+    try:
+        cursor.execute('SELECT evolution_api_url, evolution_api_key, evolution_instance FROM configuracoes LIMIT 1')
+        row_cfg = cursor.fetchone()
+        if row_cfg and dict(row_cfg).get('evolution_api_url'):
+            cfg = dict(row_cfg)
+            api_url = (cfg.get('evolution_api_url') or '').strip().rstrip('/')
+            api_key = (cfg.get('evolution_api_key') or '').strip()
+            instance = (cfg.get('evolution_instance') or '').strip()
+            if api_url and api_key and instance:
+                url_read = f"{api_url}/chat/markMessageAsRead/{instance}"
+                req_read = urllib.request.Request(url_read, method='POST')
+                req_read.add_header('Content-Type', 'application/json')
+                req_read.add_header('apikey', api_key)
+                req_read.add_header('User-Agent', 'Mozilla/5.0')
+                payload_read = json.dumps({"readMessages": [{"remoteJid": f"{telefone}@s.whatsapp.net", "fromMe": False}]}).encode('utf-8')
+                with urllib.request.urlopen(req_read, data=payload_read, timeout=5, context=ctx_unverified) as res_read:
+                    pass
+    except Exception as err:
+        print("Erro ao enviar markMessageAsRead para Evolution API:", err)
+
     conn.close()
     return jsonify({'status': 'lidas'})
 
