@@ -771,7 +771,59 @@ def api_chat_telefone_get(telefone):
         
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM mensagens_chat WHERE telefone_cliente = ? ORDER BY data_envio ASC', (telefone,))
+    
+    # Check for unread messages from client
+    if cursor.is_postgres:
+        cursor.execute("SELECT id, wpp_id FROM mensagens_chat WHERE telefone_cliente = %s AND remetente_tipo = 'cliente' AND (lida = 0 OR lida IS NULL)", (telefone,))
+    else:
+        cursor.execute("SELECT id, wpp_id FROM mensagens_chat WHERE telefone_cliente = ? AND remetente_tipo = 'cliente' AND (lida = 0 OR lida IS NULL)", (telefone,))
+        
+    unread_rows = cursor.fetchall()
+    if unread_rows:
+        wpp_ids = [r[1] for r in unread_rows if r[1]]
+        
+        if cursor.is_postgres:
+            cursor.execute("UPDATE mensagens_chat SET lida = 1 WHERE telefone_cliente = %s AND remetente_tipo = 'cliente' AND (lida = 0 OR lida IS NULL)", (telefone,))
+        else:
+            cursor.execute("UPDATE mensagens_chat SET lida = 1 WHERE telefone_cliente = ? AND remetente_tipo = 'cliente' AND (lida = 0 OR lida IS NULL)", (telefone,))
+        conn.commit()
+        
+        # Call Evolution API to mark read if there are wpp_ids
+        if wpp_ids:
+            cursor.execute("SELECT evolution_api_url, evolution_api_key, evolution_instance FROM configuracoes LIMIT 1")
+            cfg = cursor.fetchone()
+            if cfg and dict(cfg).get('evolution_api_url'):
+                try:
+                    import threading
+                    def mark_evo_read(url, apikey, instance, remote_jid, ids):
+                        try:
+                            req_url = f"{url}/chat/markMessageAsRead/{instance}"
+                            payload = {
+                                "readMessages": [
+                                    {"remoteJid": remote_jid, "fromMe": False, "id": msg_id}
+                                    for msg_id in ids
+                                ]
+                            }
+                            req = urllib.request.Request(req_url, method='POST')
+                            req.add_header('Content-Type', 'application/json')
+                            req.add_header('apikey', apikey)
+                            req.add_header('User-Agent', 'Mozilla/5.0')
+                            import ssl
+                            ctx_unv = ssl._create_unverified_context()
+                            with urllib.request.urlopen(req, data=json.dumps(payload).encode('utf-8'), timeout=5, context=ctx_unv) as res:
+                                pass
+                        except Exception as e:
+                            print("Erro ao marcar lida na Evolution:", e)
+                    
+                    remote_jid = f"{telefone}@s.whatsapp.net"
+                    threading.Thread(target=mark_evo_read, args=(dict(cfg)['evolution_api_url'], dict(cfg)['evolution_api_key'], dict(cfg)['evolution_instance'], remote_jid, wpp_ids)).start()
+                except Exception as e:
+                    print("Erro despachando mark read:", e)
+
+    if cursor.is_postgres:
+        cursor.execute('SELECT * FROM mensagens_chat WHERE telefone_cliente = %s ORDER BY data_envio ASC', (telefone,))
+    else:
+        cursor.execute('SELECT * FROM mensagens_chat WHERE telefone_cliente = ? ORDER BY data_envio ASC', (telefone,))
     mensagens = [dict(r) for r in cursor.fetchall()]
     conn.close()
     return jsonify(mensagens)
