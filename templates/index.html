@@ -458,8 +458,8 @@
                 <br><small id="inbox-subtitle" style="color: var(--text-muted);"></small>
               </div>
               <div id="inbox-actions" style="display: none; gap: 10px;">
-                <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="resolverAtendimentoInbox()" title="Encerrar / Devolver pro Bot">
-                  <i class="fa-solid fa-check"></i> Resolver
+                <button id="btn-resolver-inbox" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="resolverAtendimentoInbox()" title="Encerrar / Devolver pro Bot">
+                  <i class="fa-solid fa-check" id="btn-resolver-inbox-icon"></i> <span id="btn-resolver-inbox-text">Resolver</span>
                 </button>
                 <button class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;" onclick="toggleInboxProfile()" title="Perfil do Contato">
                   <i class="fa-solid fa-id-badge"></i> Perfil
@@ -502,13 +502,13 @@
             <div style="padding: 15px; flex: 1; overflow-y: auto;">
               <div style="margin-bottom: 15px;">
                 <label style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;">Atendente</label>
-                <div style="padding: 8px; background: rgba(0,0,0,0.1); border-radius: 6px; margin-top: 5px; font-size: 0.9rem;">
+                <div id="profile-atendente-text" style="padding: 8px; background: rgba(0,0,0,0.1); border-radius: 6px; margin-top: 5px; font-size: 0.9rem;">
                   <i class="fa-solid fa-user-tie"></i> Admin / Bot
                 </div>
               </div>
               <div style="margin-bottom: 15px;">
                 <label style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;">Status</label>
-                <div style="padding: 8px; background: rgba(0,210,255,0.1); border-radius: 6px; margin-top: 5px; font-size: 0.9rem; color: var(--primary); font-weight: bold;">
+                <div id="profile-status-text" style="padding: 8px; background: rgba(0,210,255,0.1); border-radius: 6px; margin-top: 5px; font-size: 0.9rem; color: var(--primary); font-weight: bold;">
                   Em Atendimento
                 </div>
               </div>

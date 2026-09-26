@@ -2639,6 +2639,66 @@ async function carregarMensagensInbox() {
     }).join("");
     
     container.scrollTop = container.scrollHeight;
+    
+    // Atualizar UI de Status e Atendente baseado nas mensagens
+    const msgsAdminSystem = mensagens.filter(m => m.remetente_tipo === "admin" || m.remetente_tipo === "system");
+    let statusTexto = "Bot Ativo";
+    let atendenteTexto = "Assistente Virtual";
+    let isBotActive = true;
+    
+    if (msgsAdminSystem.length > 0) {
+      const lastMsg = msgsAdminSystem[msgsAdminSystem.length - 1];
+      if (lastMsg.remetente_tipo === "system") {
+        statusTexto = "Resolvido / Bot Ativo";
+      } else if (lastMsg.remetente_nome === "Assistente Virtual") {
+        statusTexto = "Em Atendimento (Bot)";
+      } else {
+        const lastTime = new Date(lastMsg.data_envio).getTime();
+        const now = new Date().getTime();
+        if ((now - lastTime) / 1000 < 1200) {
+          statusTexto = "Em Atendimento (Humano)";
+          atendenteTexto = lastMsg.remetente_nome || "Admin";
+          isBotActive = false;
+        } else {
+          statusTexto = "Inativo (Bot Retornou)";
+        }
+      }
+    }
+    
+    const pAtend = document.getElementById("profile-atendente-text");
+    if (pAtend) pAtend.innerHTML = '<i class="fa-solid fa-user-tie"></i> ' + atendenteTexto;
+    
+    const pStatus = document.getElementById("profile-status-text");
+    if (pStatus) {
+      pStatus.innerText = statusTexto;
+      if (isBotActive) {
+        pStatus.style.color = "var(--success)";
+        pStatus.style.background = "rgba(40, 167, 69, 0.1)";
+      } else {
+        pStatus.style.color = "var(--warning)";
+        pStatus.style.background = "rgba(255, 193, 7, 0.1)";
+      }
+    }
+    
+    const btnResTxt = document.getElementById("btn-resolver-inbox-text");
+    const btnResIcon = document.getElementById("btn-resolver-inbox-icon");
+    const btnRes = document.getElementById("btn-resolver-inbox");
+    if (btnResTxt && btnResIcon && btnRes) {
+      if (isBotActive) {
+        // Se o bot já tá ativo, o botão vira "Reabrir" (só cosmético, pq basta enviar uma msg pra assumir)
+        btnResTxt.innerText = "Reabrir";
+        btnResIcon.className = "fa-solid fa-folder-open";
+        btnRes.className = "btn btn-outline";
+        btnRes.title = "Atendimento já está com o Bot. Envie uma mensagem para assumir.";
+        // btnRes.disabled = true; // pode manter ativado ou nao, mas vou so mudar visual
+      } else {
+        btnResTxt.innerText = "Resolver";
+        btnResIcon.className = "fa-solid fa-check";
+        btnRes.className = "btn btn-primary";
+        btnRes.title = "Encerrar / Devolver pro Bot";
+        btnRes.disabled = false;
+      }
+    }
   } catch(e) {}
 }
 
