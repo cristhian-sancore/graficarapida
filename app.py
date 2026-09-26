@@ -2148,6 +2148,76 @@ def webhook_evolution():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/chat/contato/<path:telefone>', methods=['GET'])
+def api_chat_contato(telefone):
+    token_admin = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token_admin):
+        return jsonify({'error': 'Acesso negado'}), 401
+    
+    # 1. Buscar pushName do banco (última mensagem do cliente)
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT remetente_nome FROM mensagens_chat WHERE telefone_cliente = ? AND remetente_tipo = ? ORDER BY id DESC LIMIT 1', (telefone, 'cliente'))
+    row = cursor.fetchone()
+    nome_banco = (dict(row).get('remetente_nome') if hasattr(row, 'keys') else row[0]) if row else None
+    conn.close()
+    
+    # 2. Buscar perfil via Evolution API (foto e nome)
+    nome_evolution = None
+    foto_url = None
+    try:
+        conn2 = get_db()
+        cursor2 = conn2.cursor()
+        cursor2.execute('SELECT evolution_api_url, evolution_api_key, evolution_instance FROM configuracoes LIMIT 1')
+        cfg_row = cursor2.fetchone()
+        conn2.close()
+        if cfg_row:
+            cfg = dict(cfg_row) if hasattr(cfg_row, 'keys') else {'evolution_api_url': cfg_row[0], 'evolution_api_key': cfg_row[1], 'evolution_instance': cfg_row[2]}
+            api_url = (cfg.get('evolution_api_url') or '').strip().rstrip('/')
+            api_key = (cfg.get('evolution_api_key') or '').strip()
+            instance = (cfg.get('evolution_instance') or '').strip()
+            
+            if api_url and api_key and instance:
+                headers = {'Content-Type': 'application/json', 'apikey': api_key}
+                num_limpo = ''.join(c for c in str(telefone) if c.isdigit())
+                
+                # Buscar foto do perfil
+                try:
+                    foto_endpoint = f"{api_url}/chat/fetchProfilePictureUrl/{instance}"
+                    foto_payload = json.dumps({"number": num_limpo}).encode('utf-8')
+                    req_foto = urllib.request.Request(foto_endpoint, data=foto_payload, headers=headers, method='POST')
+                    with urllib.request.urlopen(req_foto, timeout=5) as resp:
+                        foto_data = json.loads(resp.read().decode('utf-8'))
+                        foto_url = foto_data.get('profilePictureUrl') or foto_data.get('url') or foto_data.get('picture') or foto_data.get('imgUrl')
+                except:
+                    pass
+                
+                # Buscar nome (via contacts)
+                try:
+                    contact_endpoint = f"{api_url}/chat/findContacts/{instance}"
+                    contact_payload = json.dumps({"where": {"id": f"{num_limpo}@s.whatsapp.net"}}).encode('utf-8')
+                    req_contact = urllib.request.Request(contact_endpoint, data=contact_payload, headers=headers, method='POST')
+                    with urllib.request.urlopen(req_contact, timeout=5) as resp:
+                        contact_data = json.loads(resp.read().decode('utf-8'))
+                        if isinstance(contact_data, list) and len(contact_data) > 0:
+                            nome_evolution = contact_data[0].get('pushName') or contact_data[0].get('name') or contact_data[0].get('verifiedName')
+                        elif isinstance(contact_data, dict):
+                            nome_evolution = contact_data.get('pushName') or contact_data.get('name') or contact_data.get('verifiedName')
+                except:
+                    pass
+    except:
+        pass
+    
+    # Prioridade: Evolution > Banco > Telefone
+    nome_final = nome_evolution or nome_banco or f'Cliente {telefone}'
+    
+    return jsonify({
+        'nome': nome_final,
+        'telefone': telefone,
+        'foto_url': foto_url
+    })
+
+
 @app.route('/api/chat/telefone/<path:telefone>/resolve', methods=['POST'])
 def api_chat_telefone_resolve(telefone):
     token_admin = request.headers.get('X-Admin-Token')

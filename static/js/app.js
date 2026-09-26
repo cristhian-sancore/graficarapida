@@ -2522,10 +2522,11 @@ async function abrirInboxChat(telefone, nome) {
   document.getElementById("inbox-title").innerText = nome || "Cliente";
   document.getElementById("inbox-subtitle").innerText = "WhatsApp: " + telefone;
   
-  // Update Contact Profile Sidebar
+  // Update Contact Profile Sidebar (placeholder until API returns)
   document.getElementById("profile-name").innerText = nome || "Cliente";
   document.getElementById("profile-phone").innerText = "+" + telefone;
   document.getElementById("profile-avatar").innerText = (nome ? nome.charAt(0).toUpperCase() : "C");
+  document.getElementById("profile-avatar").style.backgroundImage = "";
   document.getElementById("inbox-input-area").style.display = "flex";
   document.getElementById("inbox-actions").style.display = "flex";
   
@@ -2535,6 +2536,26 @@ async function abrirInboxChat(telefone, nome) {
   if (fileNameEl) { fileNameEl.innerHTML = ''; fileNameEl.style.display = 'none'; }
   const input = document.getElementById("inbox-input");
   if (input) input.value = '';
+  
+  // Buscar perfil real do WhatsApp via Evolution API
+  try {
+    const contatoRes = await fetch(`/api/chat/contato/${encodeURIComponent(telefone)}`, { headers: { "X-Admin-Token": state.adminToken } });
+    if (contatoRes.ok) {
+      const contato = await contatoRes.json();
+      const nomeReal = contato.nome || nome || "Cliente";
+      document.getElementById("inbox-title").innerText = nomeReal;
+      document.getElementById("profile-name").innerText = nomeReal;
+      document.getElementById("profile-avatar").innerText = nomeReal.charAt(0).toUpperCase();
+      
+      if (contato.foto_url) {
+        const avatar = document.getElementById("profile-avatar");
+        avatar.style.backgroundImage = `url(${contato.foto_url})`;
+        avatar.style.backgroundSize = "cover";
+        avatar.style.backgroundPosition = "center";
+        avatar.innerText = "";
+      }
+    }
+  } catch(e) { console.log("Erro ao buscar contato:", e); }
   
   // Mark as read
   await fetch(`/api/chat/telefone/${encodeURIComponent(currentInboxTel)}/read`, {
