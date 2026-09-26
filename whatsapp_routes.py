@@ -361,6 +361,7 @@ def webhook_evolution():
                     req_b64 = urllib.request.Request(url_base64, method='POST')
                     req_b64.add_header('Content-Type', 'application/json')
                     req_b64.add_header('apikey', dict(cfg)['evolution_api_key'])
+                    req_b64.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)')
                     payload_b64 = json.dumps({"message": data_payload}).encode('utf-8')
                     with urllib.request.urlopen(req_b64, data=payload_b64, timeout=10, context=ctx_unverified) as res_b64:
                         b64_res = json.loads(res_b64.read().decode('utf-8'))
