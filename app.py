@@ -2286,13 +2286,20 @@ def api_chat_inbox():
     if cursor.is_postgres:
         cursor.execute("""
             SELECT DISTINCT ON (telefone_cliente) 
-                referencia_codigo, telefone_cliente, remetente_nome, mensagem, data_envio, lida, remetente_tipo
+                referencia_codigo, 
+                telefone_cliente, 
+                COALESCE((SELECT remetente_nome FROM mensagens_chat mc2 WHERE mc2.telefone_cliente = mensagens_chat.telefone_cliente AND mc2.remetente_tipo = 'cliente' AND mc2.remetente_nome IS NOT NULL AND mc2.remetente_nome != '' ORDER BY id DESC LIMIT 1), 'Cliente') as remetente_nome,
+                mensagem, data_envio, lida, remetente_tipo
             FROM mensagens_chat 
             ORDER BY telefone_cliente, id DESC
         """)
     else:
         cursor.execute("""
-            SELECT referencia_codigo, telefone_cliente, remetente_nome, mensagem, data_envio, lida, remetente_tipo
+            SELECT 
+                referencia_codigo, 
+                telefone_cliente, 
+                COALESCE((SELECT remetente_nome FROM mensagens_chat mc2 WHERE mc2.telefone_cliente = mensagens_chat.telefone_cliente AND mc2.remetente_tipo = 'cliente' AND mc2.remetente_nome IS NOT NULL AND mc2.remetente_nome != '' ORDER BY id DESC LIMIT 1), 'Cliente') as remetente_nome,
+                mensagem, data_envio, lida, remetente_tipo
             FROM mensagens_chat 
             GROUP BY telefone_cliente
             ORDER BY max(id) DESC
