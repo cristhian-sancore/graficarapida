@@ -2631,6 +2631,30 @@ async function abrirInboxChat(telefone, nome) {
   
   if (inboxInterval) clearInterval(inboxInterval);
   inboxInterval = setInterval(carregarMensagensInbox, 1500);
+  
+  if (presenceInterval) clearInterval(presenceInterval);
+  presenceInterval = setInterval(checkCurrentPresence, 1000);
+  checkCurrentPresence();
+}
+
+let presenceInterval = null;
+
+async function checkCurrentPresence() {
+  if (!currentInboxTel) return;
+  try {
+    const res = await fetch(`/api/chat/presenca/${encodeURIComponent(currentInboxTel)}`);
+    if (res.ok) {
+      const data = await res.json();
+      const subEl = document.getElementById("inbox-subtitle");
+      if (subEl) {
+        if (data.digitando) {
+          subEl.innerHTML = '<span style="color: #10b981; font-weight: bold;"><i class="fas fa-pencil-alt me-1"></i> digitando...</span>';
+        } else {
+          subEl.innerText = "WhatsApp: " + currentInboxTel;
+        }
+      }
+    }
+  } catch(e) {}
 }
 
 function salvarContatoInbox() {

@@ -1981,14 +1981,16 @@ def api_chat_presenca(telefone):
     sufixo = num_limpo[-8:] if len(num_limpo) >= 8 else num_limpo
     
     is_digitando = False
+    info_match = {}
     for k, info in list(CLIENT_PRESENCE.items()):
         if sufixo in k:
             pres = str(info.get('presence', '')).lower()
             t_last = info.get('time', 0)
-            if pres in ['composing', 'recording', 'typing'] and (time.time() - t_last) < 10:
+            info_match = info
+            if pres in ['composing', 'recording', 'typing'] and (time.time() - t_last) < 15:
                 is_digitando = True
                 break
-    return jsonify({'digitando': is_digitando})
+    return jsonify({'digitando': is_digitando, 'info': info_match, 'sufixo': sufixo})
 
 
 @app.route('/api/webhook/evolution', methods=['POST'])
@@ -2008,20 +2010,41 @@ def webhook_evolution():
         # 1. Tratar presença (cliente digitando no WhatsApp)
         if 'presence' in event_raw:
             data_payload = data.get('data', {})
-            remote_jid = (data_payload.get('id') or data_payload.get('remoteJid') or data.get('remoteJid') or '')
+            if isinstance(data_payload, list) and len(data_payload) > 0:
+                data_payload = data_payload[0]
+                
+            remote_jid = (data_payload.get('id') or 
+                          data_payload.get('remoteJid') or 
+                          data_payload.get('key', {}).get('remoteJid') or 
+                          data.get('remoteJid') or '')
+            
+            pres_state = ''
+            presences = data_payload.get('presences')
+            if isinstance(presences, dict):
+                for p_key, p_val in presences.items():
+                    if not remote_jid:
+                        remote_jid = p_key
+                    if isinstance(p_val, dict):
+                        pres_state = p_val.get('lastKnownPresence') or p_val.get('presence') or ''
+                    elif isinstance(p_val, str):
+                        pres_state = p_val
+                    if pres_state:
+                        break
+            
+            if not pres_state and isinstance(data_payload, dict):
+                pres_state = data_payload.get('presence') or data_payload.get('lastKnownPresence') or ''
+
             telefone = remote_jid.split('@')[0] if remote_jid else ''
-            presences = data_payload.get('presences', {})
-            pres_info = presences.get(remote_jid) if isinstance(presences, dict) else {}
-            if not pres_info and isinstance(presences, dict) and presences:
-                pres_info = list(presences.values())[0] if isinstance(list(presences.values())[0], dict) else {}
-            pres_state = (pres_info.get('lastKnownPresence') if isinstance(pres_info, dict) else '') or data_payload.get('presence') or ''
             
             if telefone:
+                num_limpo = ''.join(c for c in str(telefone) if c.isdigit())
+                sufixo = num_limpo[-8:] if len(num_limpo) >= 8 else num_limpo
                 import time
-                CLIENT_PRESENCE[telefone] = {
+                CLIENT_PRESENCE[sufixo] = {
                     'presence': str(pres_state).lower(),
                     'time': time.time()
                 }
+                print(f"[Presence Event] Sufixo {sufixo} -> presence: {pres_state}")
             return jsonify({'status': 'sucesso, presenca'}), 200
 
         # 2. Tratar atualização de leitura de mensagem (lida = 1 no DB)
