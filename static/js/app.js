@@ -2282,7 +2282,7 @@ function renderChatMessageContent(msg) {
     if (imgExts.some(ext => cleanUrl.endsWith(ext))) {
       mediaHtml = `
         <div style="margin-top: 6px;">
-          <a href="${mediaUrl}" target="_blank" title="Clique para abrir em tela cheia">
+          <a href="javascript:void(0)" onclick="openLightbox('${mediaUrl}')" title="Clique para abrir em tela cheia">
             <img src="${mediaUrl}" alt="Imagem" style="max-width: 100%; max-height: 280px; border-radius: 8px; display: block; object-fit: cover; box-shadow: 0 2px 8px rgba(0,0,0,0.15); cursor: pointer; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
           </a>
         </div>
@@ -2969,3 +2969,97 @@ function toggleInboxProfile() {
     el.style.display = 'none';
   }
 }
+
+
+// --- RESPOSTAS RÁPIDAS (CANNED RESPONSES) ---
+const cannedResponses = [
+  { short: '/pix', text: 'Nossa chave PIX é o celular: 6596772226 (Cristhian Sancore)' },
+  { short: '/prazo', text: 'Nosso prazo de produção padrão é de 24h a 48h úteis após a aprovação da arte.' },
+  { short: '/ola', text: 'Olá! Tudo bem? Como posso ajudar você hoje?' },
+  { short: '/endereco', text: 'Estamos localizados na Avenida Principal, Número 123. Aguardamos sua visita!' },
+  { short: '/aprovacao', text: 'A arte está aprovada para impressão? Responda SIM para colocarmos na máquina.' }
+];
+
+let cannedIndex = 0;
+
+function checkCannedResponses(value) {
+  const menu = document.getElementById('canned-responses-menu');
+  if (!value.startsWith('/')) {
+    menu.style.display = 'none';
+    return;
+  }
+  
+  const search = value.toLowerCase();
+  const matches = cannedResponses.filter(c => c.short.startsWith(search));
+  
+  if (matches.length === 0) {
+    menu.style.display = 'none';
+    return;
+  }
+  
+  menu.innerHTML = '';
+  matches.forEach((match, index) => {
+    const item = document.createElement('div');
+    item.style.padding = '10px 15px';
+    item.style.cursor = 'pointer';
+    item.style.borderBottom = '1px solid var(--border)';
+    if (index === cannedIndex) {
+      item.style.background = 'var(--primary)';
+      item.style.color = '#fff';
+    } else {
+      item.style.color = 'var(--text)';
+    }
+    item.innerHTML = `<strong>${match.short}</strong><br><small style="opacity: 0.8;">${match.text}</small>`;
+    
+    item.onmouseover = () => { cannedIndex = index; checkCannedResponses(value); };
+    item.onclick = () => { applyCannedResponse(match.text); };
+    
+    menu.appendChild(item);
+  });
+  
+  menu.style.display = 'flex';
+}
+
+function navigateCannedResponses(event) {
+  const menu = document.getElementById('canned-responses-menu');
+  if (menu.style.display === 'none') return;
+  
+  const value = document.getElementById('inbox-input').value.toLowerCase();
+  const matches = cannedResponses.filter(c => c.short.startsWith(value));
+  
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    cannedIndex = (cannedIndex + 1) % matches.length;
+    checkCannedResponses(value);
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    cannedIndex = (cannedIndex - 1 + matches.length) % matches.length;
+    checkCannedResponses(value);
+  } else if (event.key === 'Enter') {
+    event.preventDefault();
+    if (matches[cannedIndex]) {
+      applyCannedResponse(matches[cannedIndex].text);
+    }
+  }
+}
+
+function applyCannedResponse(text) {
+  const input = document.getElementById('inbox-input');
+  input.value = text;
+  document.getElementById('canned-responses-menu').style.display = 'none';
+  input.focus();
+}
+
+// --- FIM RESPOSTAS RÁPIDAS ---
+
+
+// --- LIGHTBOX (VISUALIZADOR DE MÍDIA) ---
+function openLightbox(url) {
+  const modal = document.getElementById('lightbox-modal');
+  const img = document.getElementById('lightbox-img');
+  if (modal && img) {
+    img.src = url;
+    modal.style.display = 'flex';
+  }
+}
+// --- FIM LIGHTBOX ---
