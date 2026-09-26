@@ -2183,13 +2183,13 @@ def webhook_evolution():
                     
                     bot_reply = f"✅ Tudo pronto! Registramos sua solicitação sob o código *{orc_codigo}*.\nEm breve nossa equipe enviará os valores!"
             
-            if bot_reply:
-                send_evolution_whatsapp(telefone, bot_reply)
-                if cursor.is_postgres:
-                    cursor.execute("INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem) VALUES (%s, 'admin', 'Assistente Virtual', %s, %s)", (codigo, telefone, bot_reply))
-                else:
-                    cursor.execute("INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem) VALUES (?, 'admin', 'Assistente Virtual', ?, ?)", (codigo, telefone, bot_reply))
-                conn.commit()
+        if bot_reply:
+            send_evolution_whatsapp(telefone, bot_reply)
+            if cursor.is_postgres:
+                cursor.execute("INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem) VALUES (%s, 'admin', 'Assistente Virtual', %s, %s)", (codigo, telefone, bot_reply))
+            else:
+                cursor.execute("INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem) VALUES (?, 'admin', 'Assistente Virtual', ?, ?)", (codigo, telefone, bot_reply))
+            conn.commit()
 
         conn.close()
         return jsonify({'status': 'sucesso'})
