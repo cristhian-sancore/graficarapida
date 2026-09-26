@@ -283,7 +283,7 @@ def webhook_evolution():
                       data_payload.get('id') or '')
             status_ack = str(data_payload.get('status') or '').upper()
             
-            if key_id and any(st in status_ack for st in ['READ', '4', 'DELIVERY_ACK', '3']):
+            if key_id and any(st in status_ack for st in ['READ', '4']):
                 conn = get_db()
                 cursor = conn.cursor()
                 

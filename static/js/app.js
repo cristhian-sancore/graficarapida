@@ -3063,3 +3063,88 @@ function openLightbox(url) {
   }
 }
 // --- FIM LIGHTBOX ---
+// --- AUDIO RECORDING ---
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+
+async function toggleAudioRecording() {
+  if (isRecording) {
+    mediaRecorder.stop();
+    return;
+  }
+  
+  if (!currentInboxTel || !state.adminToken) {
+      alert('Selecione um contato para enviar audio.');
+      return;
+  }
+  
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorder = new MediaRecorder(stream);
+    
+    mediaRecorder.onstart = () => {
+      isRecording = true;
+      audioChunks = [];
+      const icon = document.getElementById('icon-record-audio');
+      if(icon) {
+          icon.className = 'fa-solid fa-stop';
+          icon.style.color = 'red';
+      }
+    };
+    
+    mediaRecorder.ondataavailable = event => {
+      audioChunks.push(event.data);
+    };
+    
+    mediaRecorder.onstop = async () => {
+      isRecording = false;
+      const icon = document.getElementById('icon-record-audio');
+      if(icon) {
+          icon.className = 'fa-solid fa-microphone';
+          icon.style.color = '';
+      }
+      
+      const audioBlob = new Blob(audioChunks, { type: 'audio/ogg; codecs=opus' });
+      audioChunks = [];
+      
+      // Stop tracks
+      stream.getTracks().forEach(track => track.stop());
+      
+      // Read Blob as base64
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+         const b64 = e.target.result;
+         try {
+            const btn = document.getElementById('btn-record-audio');
+            if(btn) btn.disabled = true;
+            
+            await fetch(/api/chat/telefone/ + encodeURIComponent(currentInboxTel), {
+              method: "POST",
+              headers: { "X-Admin-Token": state.adminToken, "Content-Type": "application/json" },
+              body: JSON.stringify({ 
+                  mensagem: '', 
+                  file_base64: b64, 
+                  file_name: 'audio_' + Date.now() + '.ogg', 
+                  file_mime: 'audio/ogg', 
+                  file_type: 'audio' 
+              })
+            });
+            carregarMensagensInbox();
+         } catch(err) {
+            console.error('Erro ao enviar audio:', err);
+            alert('Falha ao enviar audio.');
+         } finally {
+            const btn = document.getElementById('btn-record-audio');
+            if(btn) btn.disabled = false;
+         }
+      };
+      reader.readAsDataURL(audioBlob);
+    };
+    
+    mediaRecorder.start();
+  } catch (err) {
+    console.error('Erro ao acessar microfone:', err);
+    alert('Não foi possível acessar o microfone. Verifique as permissões.');
+  }
+}
