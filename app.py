@@ -1980,7 +1980,8 @@ def api_chat_presenca(telefone):
     num_limpo = ''.join(c for c in str(telefone) if c.isdigit())
     sufixo = num_limpo[-8:] if len(num_limpo) >= 8 else num_limpo
     
-    is_digitando = False
+    is_active = False
+    pres_tipo = 'composing'
     info_match = {}
     for k, info in list(CLIENT_PRESENCE.items()):
         if sufixo in k:
@@ -1988,9 +1989,10 @@ def api_chat_presenca(telefone):
             t_last = info.get('time', 0)
             info_match = info
             if pres in ['composing', 'recording', 'typing'] and (time.time() - t_last) < 15:
-                is_digitando = True
+                is_active = True
+                pres_tipo = 'recording' if pres == 'recording' else 'composing'
                 break
-    return jsonify({'digitando': is_digitando, 'info': info_match, 'sufixo': sufixo})
+    return jsonify({'digitando': is_active, 'tipo': pres_tipo, 'info': info_match, 'sufixo': sufixo})
 
 
 @app.route('/api/webhook/evolution', methods=['POST'])
@@ -2047,22 +2049,24 @@ def webhook_evolution():
                 print(f"[Presence Event] Sufixo {sufixo} -> presence: {pres_state}")
             return jsonify({'status': 'sucesso, presenca'}), 200
 
-        # 2. Tratar atualização de leitura de mensagem (lida = 1 no DB)
+        # 2. Tratar atualização de leitura de mensagem (lida = 1 no DB via keyId)
         if 'update' in event_raw and 'upsert' not in event_raw:
             data_payload = data.get('data', {})
-            remote_jid = (data_payload.get('key', {}).get('remoteJid') or data_payload.get('remoteJid') or '')
-            telefone = remote_jid.split('@')[0] if remote_jid else ''
+            key_id = (data_payload.get('keyId') or 
+                      data_payload.get('key', {}).get('id') or 
+                      data_payload.get('id') or '')
             status_ack = str(data_payload.get('status') or '').upper()
             
-            if telefone and any(st in status_ack for st in ['READ', '4', 'DELIVERY_ACK', '3']):
+            if key_id and any(st in status_ack for st in ['READ', '4', 'DELIVERY_ACK', '3']):
                 conn = get_db()
                 cursor = conn.cursor()
                 if cursor.is_postgres:
-                    cursor.execute("UPDATE mensagens_chat SET lida = 1 WHERE telefone_cliente = %s AND remetente_tipo = 'admin'", (telefone,))
+                    cursor.execute("UPDATE mensagens_chat SET lida = 1 WHERE wpp_id = %s OR wpp_id LIKE %s", (key_id, f"%{key_id}%"))
                 else:
-                    cursor.execute("UPDATE mensagens_chat SET lida = 1 WHERE telefone_cliente = ? AND remetente_tipo = 'admin'", (telefone,))
+                    cursor.execute("UPDATE mensagens_chat SET lida = 1 WHERE wpp_id = ? OR wpp_id LIKE ?", (key_id, f"%{key_id}%"))
                 conn.commit()
                 conn.close()
+                print(f"[Read Update Success] Mensagem {key_id} marcada como lida (lida=1)")
                 return jsonify({'status': 'sucesso, status lida atualizado'}), 200
             
         data_payload = data.get('data', {})
@@ -2563,12 +2567,27 @@ def api_chat_telefone_post(telefone):
     if not success:
         return jsonify({'error': err}), 500
 
+    wpp_id = None
+    try:
+        import json
+        res_json = json.loads(err) if isinstance(err, str) else err
+        if isinstance(res_json, dict):
+            wpp_id = res_json.get('key', {}).get('id') or res_json.get('id')
+    except Exception:
+        pass
+
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem)
-        VALUES ('GERAL', 'admin', 'Admin', ?, ?)
-    ''', (telefone, mensagem))
+    if cursor.is_postgres:
+        cursor.execute('''
+            INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem, wpp_id)
+            VALUES ('GERAL', 'admin', 'Admin', %s, %s, %s)
+        ''', (telefone, mensagem, wpp_id))
+    else:
+        cursor.execute('''
+            INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem, wpp_id)
+            VALUES ('GERAL', 'admin', 'Admin', ?, ?, ?)
+        ''', (telefone, mensagem, wpp_id))
     conn.commit()
     conn.close()
     return jsonify({'status': 'sucesso'})

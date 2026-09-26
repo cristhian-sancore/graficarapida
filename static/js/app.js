@@ -2648,7 +2648,11 @@ async function checkCurrentPresence() {
       const subEl = document.getElementById("inbox-subtitle");
       if (subEl) {
         if (data.digitando) {
-          subEl.innerHTML = '<span style="color: #10b981; font-weight: bold;"><i class="fas fa-pencil-alt me-1"></i> digitando...</span>';
+          if (data.tipo === 'recording') {
+            subEl.innerHTML = '<span style="color: #ef4444; font-weight: bold;"><i class="fas fa-microphone me-1"></i> gravando áudio...</span>';
+          } else {
+            subEl.innerHTML = '<span style="color: #10b981; font-weight: bold;"><i class="fas fa-pencil-alt me-1"></i> digitando...</span>';
+          }
         } else {
           subEl.innerText = "WhatsApp: " + currentInboxTel;
         }
@@ -2747,7 +2751,7 @@ async function carregarMensagensInbox() {
     
     container.scrollTop = container.scrollHeight;
     
-    // Checar presença (se cliente está digitando)
+    // Checar presença (se cliente está digitando / gravando áudio)
     try {
       const presRes = await fetch(`/api/chat/presenca/${encodeURIComponent(currentInboxTel)}`);
       if (presRes.ok) {
@@ -2755,7 +2759,11 @@ async function carregarMensagensInbox() {
         const subEl = document.getElementById("inbox-subtitle");
         if (subEl) {
           if (presData.digitando) {
-            subEl.innerHTML = '<span style="color: #10b981; font-weight: bold;"><i class="fas fa-pencil-alt me-1"></i> digitando...</span>';
+            if (presData.tipo === 'recording') {
+              subEl.innerHTML = '<span style="color: #ef4444; font-weight: bold;"><i class="fas fa-microphone me-1"></i> gravando áudio...</span>';
+            } else {
+              subEl.innerHTML = '<span style="color: #10b981; font-weight: bold;"><i class="fas fa-pencil-alt me-1"></i> digitando...</span>';
+            }
           } else {
             subEl.innerText = "WhatsApp: " + currentInboxTel;
           }
