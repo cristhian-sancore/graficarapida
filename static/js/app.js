@@ -2800,6 +2800,24 @@ async function editarInsumoAdmin(id) {
 
 async function resolverAtendimentoInbox() {
   if (!currentInboxTel || !state.adminToken) return;
+  
+  const btnTxt = document.getElementById("btn-resolver-inbox-text");
+  if (btnTxt && btnTxt.innerText === "Reabrir") {
+    const payload = { mensagem: "👋 Olá, seu atendimento foi transferido para nossa equipe e um humano já vai te dar continuidade." };
+    try {
+      const res = await fetch(`/api/chat/telefone/${encodeURIComponent(currentInboxTel)}`, {
+        method: "POST",
+        headers: { "X-Admin-Token": state.adminToken, "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        Swal.fire({title: 'Atendimento Assumido', text: 'O bot foi pausado.', icon: 'success', timer: 2000, showConfirmButton: false});
+        carregarMensagensInbox();
+      }
+    } catch(e) { console.error(e); }
+    return;
+  }
+  
   const res = await fetch('/api/chat/telefone/' + encodeURIComponent(currentInboxTel) + '/resolve', {
     method: 'POST',
     headers: { 'X-Admin-Token': state.adminToken }
