@@ -2521,6 +2521,11 @@ async function abrirInboxChat(telefone, nome) {
   
   document.getElementById("inbox-title").innerText = nome || "Cliente";
   document.getElementById("inbox-subtitle").innerText = "WhatsApp: " + telefone;
+  
+  // Update Contact Profile Sidebar
+  document.getElementById("profile-name").innerText = nome || "Cliente";
+  document.getElementById("profile-phone").innerText = "+" + telefone;
+  document.getElementById("profile-avatar").innerText = (nome ? nome.charAt(0).toUpperCase() : "C");
   document.getElementById("inbox-input-area").style.display = "flex";
   document.getElementById("inbox-actions").style.display = "flex";
   
@@ -2732,3 +2737,26 @@ async function editarInsumoAdmin(id) {
   }
 }
 
+
+async function resolverAtendimentoInbox() {
+  if (!currentInboxTel || !state.adminToken) return;
+  const res = await fetch('/api/chat/telefone/' + encodeURIComponent(currentInboxTel) + '/resolve', {
+    method: 'POST',
+    headers: { 'X-Admin-Token': state.adminToken }
+  });
+  if (res.ok) {
+    Swal.fire('Encerrado', 'Atendimento encerrado com sucesso. O Bot voltará a responder.', 'success');
+    carregarMensagensInbox();
+  } else {
+    Swal.fire('Erro', 'Não foi possível encerrar.', 'error');
+  }
+}
+
+function toggleInboxProfile() {
+  const el = document.getElementById('inbox-profile-sidebar');
+  if (el.style.display === 'none' || !el.style.display) {
+    el.style.display = 'flex';
+  } else {
+    el.style.display = 'none';
+  }
+}

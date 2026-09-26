@@ -458,6 +458,12 @@
                 <br><small id="inbox-subtitle" style="color: var(--text-muted);"></small>
               </div>
               <div id="inbox-actions" style="display: none; gap: 10px;">
+                <button class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="resolverAtendimentoInbox()" title="Encerrar / Devolver pro Bot">
+                  <i class="fa-solid fa-check"></i> Resolver
+                </button>
+                <button class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;" onclick="toggleInboxProfile()" title="Perfil do Contato">
+                  <i class="fa-solid fa-id-badge"></i> Perfil
+                </button>
                 <button class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;" onclick="salvarContatoInbox()" title="Salvar Contato">
                   <i class="fa-solid fa-user-plus"></i> Salvar
                 </button>
@@ -473,11 +479,39 @@
               <input type="file" id="inbox-file-input" style="display: none;" onchange="const f = this.files.length > 0 ? this.files[0].name : ''; const el = document.getElementById('inbox-file-name'); if (f) { el.innerHTML = f + ' <span style=\'cursor:pointer;color:var(--danger);font-weight:bold;margin-left:4px;font-size:1rem;\'>&times;</span>'; el.style.display = 'inline-flex'; } else { el.innerHTML = ''; el.style.display = 'none'; }">
               <button class="btn btn-secondary" onclick="document.getElementById('inbox-file-input').click()" title="Anexar Arquivo"><i class="fa-solid fa-paperclip"></i></button>
               <button class="btn btn-secondary" onclick="document.getElementById('inbox-input').value += '😀'" title="Inserir Emoticon"><i class="fa-regular fa-face-smile"></i></button>
+              <button class="btn btn-secondary" onclick="alert('Áudio em desenvolvimento!')" title="Gravar Áudio"><i class="fa-solid fa-microphone"></i></button>
               <div id="inbox-file-name" style="font-size: 0.8rem; color: var(--primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; background: rgba(0,210,255,0.12); border: 1px solid rgba(0,210,255,0.3); padding: 4px 8px; border-radius: 6px; display: none; align-items: center; cursor: pointer;" onclick="document.getElementById('inbox-file-input').value=''; this.innerHTML=''; this.style.display='none';" title="Clique para remover o anexo"></div>
               <input type="text" id="inbox-input" class="form-control" placeholder="Digite uma mensagem..." style="flex: 1;" onkeypress="if(event.key==='Enter') enviarMensagemInbox()">
               <button class="btn btn-primary" onclick="enviarMensagemInbox()">
-                <i class="fa-solid fa-paper-plane"></i>
+                <i class="fa-solid fa-paper-plane"></i> Enviar
               </button>
+            </div>
+          </div>
+          
+          <!-- Perfil do Contato (Sidebar Direita Estilo Chatwoot) -->
+          <div id="inbox-profile-sidebar" style="width: 280px; border-left: 1px solid var(--border); display: none; flex-direction: column; background: var(--surface);">
+            <div style="padding: 15px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+              <strong>Contato</strong>
+              <button class="btn btn-secondary btn-sm" style="padding: 2px 6px;" onclick="document.getElementById('inbox-profile-sidebar').style.display='none'"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div style="padding: 20px; display: flex; flex-direction: column; align-items: center; border-bottom: 1px solid var(--border);">
+              <div style="width: 70px; height: 70px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; margin-bottom: 10px;" id="profile-avatar">C</div>
+              <h3 id="profile-name" style="margin: 0; font-size: 1.1rem; text-align: center;">Nome</h3>
+              <p id="profile-phone" style="margin: 5px 0 0 0; color: var(--text-muted); font-size: 0.9rem;">+55 11 99999-9999</p>
+            </div>
+            <div style="padding: 15px; flex: 1; overflow-y: auto;">
+              <div style="margin-bottom: 15px;">
+                <label style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;">Atendente</label>
+                <div style="padding: 8px; background: rgba(0,0,0,0.1); border-radius: 6px; margin-top: 5px; font-size: 0.9rem;">
+                  <i class="fa-solid fa-user-tie"></i> Admin / Bot
+                </div>
+              </div>
+              <div style="margin-bottom: 15px;">
+                <label style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: bold;">Status</label>
+                <div style="padding: 8px; background: rgba(0,210,255,0.1); border-radius: 6px; margin-top: 5px; font-size: 0.9rem; color: var(--primary); font-weight: bold;">
+                  Em Atendimento
+                </div>
+              </div>
             </div>
           </div>
         </div>
