@@ -2485,11 +2485,13 @@ async function loadWhatsAppInbox() {
       const nome = c.referencia_codigo === "GERAL" ? displayName : `${c.referencia_codigo} (${displayName})`;
       const iniciais = displayName.substring(0, 2).toUpperCase();
       
+      const avatarHtml = c.foto_url
+        ? `<div style="width: 42px; height: 42px; border-radius: 50%; background-image: url('${c.foto_url}'); background-size: cover; background-position: center; flex-shrink: 0;"></div>`
+        : `<div style="width: 42px; height: 42px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; color: #fff; flex-shrink: 0;">${iniciais}</div>`;
+
       return `
         <div style="padding: 15px; border-bottom: 1px solid var(--border); cursor: pointer; background: ${bg}; display: flex; gap: 12px; align-items: center;" onclick="abrirInboxChat('${c.telefone_cliente}', '${c.remetente_nome}')">
-          <div style="width: 42px; height: 42px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; color: #fff; flex-shrink: 0;">
-            ${iniciais}
-          </div>
+          ${avatarHtml}
           <div style="overflow: hidden; flex: 1;">
             <div style="font-weight: bold; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; justify-content: space-between; align-items: center;">
                 <span style="color: #fff;">${nome}</span>
@@ -2522,11 +2524,23 @@ async function abrirInboxChat(telefone, nome) {
   document.getElementById("inbox-title").innerText = nome || "Cliente";
   document.getElementById("inbox-subtitle").innerText = "WhatsApp: " + telefone;
   
-  // Update Contact Profile Sidebar (placeholder until API returns)
+  const initChar = (nome ? nome.charAt(0).toUpperCase() : "C");
+
+  // Update Contact Profile Sidebar & Header Avatars
   document.getElementById("profile-name").innerText = nome || "Cliente";
   document.getElementById("profile-phone").innerText = "+" + telefone;
-  document.getElementById("profile-avatar").innerText = (nome ? nome.charAt(0).toUpperCase() : "C");
-  document.getElementById("profile-avatar").style.backgroundImage = "";
+  
+  const pAvatar = document.getElementById("profile-avatar");
+  if (pAvatar) {
+    pAvatar.innerText = initChar;
+    pAvatar.style.backgroundImage = "";
+  }
+  const hAvatar = document.getElementById("inbox-header-avatar");
+  if (hAvatar) {
+    hAvatar.innerText = initChar;
+    hAvatar.style.backgroundImage = "";
+  }
+
   document.getElementById("inbox-input-area").style.display = "flex";
   document.getElementById("inbox-actions").style.display = "flex";
   
@@ -2543,16 +2557,27 @@ async function abrirInboxChat(telefone, nome) {
     if (contatoRes.ok) {
       const contato = await contatoRes.json();
       const nomeReal = contato.nome || nome || "Cliente";
+      const charReal = nomeReal.charAt(0).toUpperCase();
+
       document.getElementById("inbox-title").innerText = nomeReal;
       document.getElementById("profile-name").innerText = nomeReal;
-      document.getElementById("profile-avatar").innerText = nomeReal.charAt(0).toUpperCase();
+      
+      if (pAvatar) pAvatar.innerText = charReal;
+      if (hAvatar) hAvatar.innerText = charReal;
       
       if (contato.foto_url) {
-        const avatar = document.getElementById("profile-avatar");
-        avatar.style.backgroundImage = `url(${contato.foto_url})`;
-        avatar.style.backgroundSize = "cover";
-        avatar.style.backgroundPosition = "center";
-        avatar.innerText = "";
+        if (pAvatar) {
+          pAvatar.style.backgroundImage = `url(${contato.foto_url})`;
+          pAvatar.style.backgroundSize = "cover";
+          pAvatar.style.backgroundPosition = "center";
+          pAvatar.innerText = "";
+        }
+        if (hAvatar) {
+          hAvatar.style.backgroundImage = `url(${contato.foto_url})`;
+          hAvatar.style.backgroundSize = "cover";
+          hAvatar.style.backgroundPosition = "center";
+          hAvatar.innerText = "";
+        }
       }
     }
   } catch(e) { console.log("Erro ao buscar contato:", e); }

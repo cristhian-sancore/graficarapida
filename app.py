@@ -209,6 +209,7 @@ def init_db():
             data_envio DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    safe_add_column(cursor, conn, 'mensagens_chat', 'foto_url TEXT')
 
     # Configurações do Site / CMS / Evolution API
     cursor.execute('''
@@ -2154,23 +2155,33 @@ def api_chat_contato(telefone):
     if not get_current_admin(token_admin):
         return jsonify({'error': 'Acesso negado'}), 401
     
-    # 1. Buscar pushName do banco (última mensagem do cliente)
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute('SELECT remetente_nome FROM mensagens_chat WHERE telefone_cliente = ? AND remetente_tipo = ? ORDER BY id DESC LIMIT 1', (telefone, 'cliente'))
-    row = cursor.fetchone()
-    nome_banco = (dict(row).get('remetente_nome') if hasattr(row, 'keys') else row[0]) if row else None
-    conn.close()
     
-    # 2. Buscar perfil via Evolution API (foto e nome)
-    nome_evolution = None
-    foto_url = None
+    # 1. Buscar nome e foto salvos no banco
+    nome_banco = None
+    foto_banco = None
     try:
-        conn2 = get_db()
-        cursor2 = conn2.cursor()
+        if cursor.is_postgres:
+            cursor.execute("SELECT remetente_nome, foto_url FROM mensagens_chat WHERE telefone_cliente = %s AND remetente_tipo = 'cliente' ORDER BY id DESC LIMIT 1", (telefone,))
+        else:
+            cursor.execute("SELECT remetente_nome, foto_url FROM mensagens_chat WHERE telefone_cliente = ? AND remetente_tipo = ? ORDER BY id DESC LIMIT 1", (telefone, 'cliente'))
+        row = cursor.fetchone()
+        if row:
+            r_dict = dict(row) if hasattr(row, 'keys') else {'remetente_nome': row[0], 'foto_url': row[1] if len(row) > 1 else None}
+            nome_banco = r_dict.get('remetente_nome')
+            foto_banco = r_dict.get('foto_url')
+    except Exception as e:
+        pass
+    
+    nome_evolution = None
+    foto_url = foto_banco
+    
+    # 2. Tentar buscar da Evolution API (v1 / v2)
+    try:
+        cursor2 = conn.cursor()
         cursor2.execute('SELECT evolution_api_url, evolution_api_key, evolution_instance FROM configuracoes LIMIT 1')
         cfg_row = cursor2.fetchone()
-        conn2.close()
         if cfg_row:
             cfg = dict(cfg_row) if hasattr(cfg_row, 'keys') else {'evolution_api_url': cfg_row[0], 'evolution_api_key': cfg_row[1], 'evolution_instance': cfg_row[2]}
             api_url = (cfg.get('evolution_api_url') or '').strip().rstrip('/')
@@ -2181,34 +2192,91 @@ def api_chat_contato(telefone):
                 headers = {'Content-Type': 'application/json', 'apikey': api_key}
                 num_limpo = ''.join(c for c in str(telefone) if c.isdigit())
                 
-                # Buscar foto do perfil
-                try:
-                    foto_endpoint = f"{api_url}/chat/fetchProfilePictureUrl/{instance}"
-                    foto_payload = json.dumps({"number": num_limpo}).encode('utf-8')
-                    req_foto = urllib.request.Request(foto_endpoint, data=foto_payload, headers=headers, method='POST')
-                    with urllib.request.urlopen(req_foto, timeout=5) as resp:
-                        foto_data = json.loads(resp.read().decode('utf-8'))
-                        foto_url = foto_data.get('profilePictureUrl') or foto_data.get('url') or foto_data.get('picture') or foto_data.get('imgUrl')
-                except:
-                    pass
+                # A. Testar POST endpoints de foto de perfil
+                foto_endpoints = [
+                    f"{api_url}/chat/fetchProfilePictureUrl/{instance}",
+                    f"{api_url}/profile/fetchProfilePictureUrl/{instance}"
+                ]
+                payloads_foto = [
+                    json.dumps({"number": num_limpo}).encode('utf-8'),
+                    json.dumps({"number": f"{num_limpo}@s.whatsapp.net"}).encode('utf-8')
+                ]
                 
-                # Buscar nome (via contacts)
-                try:
-                    contact_endpoint = f"{api_url}/chat/findContacts/{instance}"
-                    contact_payload = json.dumps({"where": {"id": f"{num_limpo}@s.whatsapp.net"}}).encode('utf-8')
-                    req_contact = urllib.request.Request(contact_endpoint, data=contact_payload, headers=headers, method='POST')
-                    with urllib.request.urlopen(req_contact, timeout=5) as resp:
-                        contact_data = json.loads(resp.read().decode('utf-8'))
-                        if isinstance(contact_data, list) and len(contact_data) > 0:
-                            nome_evolution = contact_data[0].get('pushName') or contact_data[0].get('name') or contact_data[0].get('verifiedName')
-                        elif isinstance(contact_data, dict):
-                            nome_evolution = contact_data.get('pushName') or contact_data.get('name') or contact_data.get('verifiedName')
-                except:
-                    pass
-    except:
-        pass
+                for f_url in foto_endpoints:
+                    if foto_url: break
+                    for p_data in payloads_foto:
+                        if foto_url: break
+                        try:
+                            req_foto = urllib.request.Request(f_url, data=p_data, headers=headers, method='POST')
+                            with urllib.request.urlopen(req_foto, timeout=4) as resp:
+                                foto_data = json.loads(resp.read().decode('utf-8'))
+                                if isinstance(foto_data, dict):
+                                    foto_url = (foto_data.get('profilePictureUrl') or 
+                                                foto_data.get('pictureUrl') or 
+                                                foto_data.get('picture') or 
+                                                foto_data.get('url') or 
+                                                foto_data.get('imgUrl') or 
+                                                foto_data.get('profilePicUrl') or
+                                                foto_data.get('displayPictureUrl'))
+                        except Exception as e:
+                            pass
+                
+                # B. Testar GET endpoint de foto
+                if not foto_url:
+                    try:
+                        get_ep = f"{api_url}/chat/fetchProfilePictureUrl/{instance}?number={num_limpo}"
+                        req_get = urllib.request.Request(get_ep, headers=headers, method='GET')
+                        with urllib.request.urlopen(req_get, timeout=4) as resp:
+                            foto_data = json.loads(resp.read().decode('utf-8'))
+                            if isinstance(foto_data, dict):
+                                foto_url = (foto_data.get('profilePictureUrl') or foto_data.get('pictureUrl') or foto_data.get('picture') or foto_data.get('url'))
+                    except Exception as e:
+                        pass
+                
+                # C. Testar busca de contatos (findContacts / contact find) - extrai tanto Nome quanto Foto
+                contact_endpoints = [
+                    (f"{api_url}/chat/findContacts/{instance}", json.dumps({"where": {"id": f"{num_limpo}@s.whatsapp.net"}}).encode('utf-8')),
+                    (f"{api_url}/chat/findContacts/{instance}", json.dumps({"where": {"id": num_limpo}}).encode('utf-8')),
+                    (f"{api_url}/contact/find/{instance}", json.dumps({"where": {"id": f"{num_limpo}@s.whatsapp.net"}}).encode('utf-8')),
+                ]
+                for c_ep, c_payload in contact_endpoints:
+                    try:
+                        req_contact = urllib.request.Request(c_ep, data=c_payload, headers=headers, method='POST')
+                        with urllib.request.urlopen(req_contact, timeout=4) as resp:
+                            contact_data = json.loads(resp.read().decode('utf-8'))
+                            obj = None
+                            if isinstance(contact_data, list) and len(contact_data) > 0:
+                                obj = contact_data[0]
+                            elif isinstance(contact_data, dict):
+                                obj = contact_data
+                            
+                            if obj:
+                                if not nome_evolution:
+                                    nome_evolution = obj.get('pushName') or obj.get('name') or obj.get('verifiedName')
+                                if not foto_url:
+                                    foto_url = (obj.get('profilePictureUrl') or 
+                                                obj.get('pictureUrl') or 
+                                                obj.get('picture') or 
+                                                obj.get('profilePicUrl') or 
+                                                obj.get('url'))
+                    except Exception as e:
+                        pass
+    except Exception as e:
+        print("Erro api_chat_contato:", e)
     
-    # Prioridade: Evolution > Banco > Telefone
+    # 3. Atualizar foto_url no banco de dados para a conversa do cliente
+    if foto_url and foto_url != foto_banco:
+        try:
+            if cursor.is_postgres:
+                cursor.execute("UPDATE mensagens_chat SET foto_url = %s WHERE telefone_cliente = %s", (foto_url, telefone))
+            else:
+                cursor.execute("UPDATE mensagens_chat SET foto_url = ? WHERE telefone_cliente = ?", (foto_url, telefone))
+            conn.commit()
+        except Exception as e:
+            pass
+            
+    conn.close()
+    
     nome_final = nome_evolution or nome_banco or f'Cliente {telefone}'
     
     return jsonify({
@@ -2359,7 +2427,8 @@ def api_chat_inbox():
                 referencia_codigo, 
                 telefone_cliente, 
                 COALESCE((SELECT remetente_nome FROM mensagens_chat mc2 WHERE mc2.telefone_cliente = mensagens_chat.telefone_cliente AND mc2.remetente_tipo = 'cliente' AND mc2.remetente_nome IS NOT NULL AND mc2.remetente_nome != '' ORDER BY id DESC LIMIT 1), 'Cliente') as remetente_nome,
-                mensagem, data_envio, lida, remetente_tipo
+                mensagem, data_envio, lida, remetente_tipo,
+                COALESCE((SELECT foto_url FROM mensagens_chat mc3 WHERE mc3.telefone_cliente = mensagens_chat.telefone_cliente AND mc3.foto_url IS NOT NULL AND mc3.foto_url != '' ORDER BY id DESC LIMIT 1), '') as foto_url
             FROM mensagens_chat 
             ORDER BY telefone_cliente, id DESC
         """)
@@ -2369,7 +2438,8 @@ def api_chat_inbox():
                 referencia_codigo, 
                 telefone_cliente, 
                 COALESCE((SELECT remetente_nome FROM mensagens_chat mc2 WHERE mc2.telefone_cliente = mensagens_chat.telefone_cliente AND mc2.remetente_tipo = 'cliente' AND mc2.remetente_nome IS NOT NULL AND mc2.remetente_nome != '' ORDER BY id DESC LIMIT 1), 'Cliente') as remetente_nome,
-                mensagem, data_envio, lida, remetente_tipo
+                mensagem, data_envio, lida, remetente_tipo,
+                COALESCE((SELECT foto_url FROM mensagens_chat mc3 WHERE mc3.telefone_cliente = mensagens_chat.telefone_cliente AND mc3.foto_url IS NOT NULL AND mc3.foto_url != '' ORDER BY id DESC LIMIT 1), '') as foto_url
             FROM mensagens_chat 
             GROUP BY telefone_cliente
             ORDER BY max(id) DESC
@@ -2391,7 +2461,8 @@ def api_chat_inbox():
         d = dict(r) if hasattr(r, "keys") else {
             "referencia_codigo": r[0], "telefone_cliente": r[1], 
             "remetente_nome": r[2], "mensagem": r[3], 
-            "data_envio": r[4], "lida": r[5], "remetente_tipo": r[6]
+            "data_envio": r[4], "lida": r[5], "remetente_tipo": r[6],
+            "foto_url": r[7] if len(r) > 7 else ""
         }
         
         # Pega a contagem de no lidas para este chat

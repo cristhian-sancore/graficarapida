@@ -453,9 +453,12 @@
           <!-- Area do Chat -->
           <div style="flex: 1; display: flex; flex-direction: column; background: var(--bg);">
             <div id="inbox-header" style="padding: 15px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between;">
-              <div>
-                <strong id="inbox-title">Selecione uma conversa</strong>
-                <br><small id="inbox-subtitle" style="color: var(--text-muted);"></small>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <div id="inbox-header-avatar" style="width: 42px; height: 42px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; flex-shrink: 0; background-size: cover; background-position: center;">C</div>
+                <div>
+                  <strong id="inbox-title">Selecione uma conversa</strong>
+                  <br><small id="inbox-subtitle" style="color: var(--text-muted);"></small>
+                </div>
               </div>
               <div id="inbox-actions" style="display: none; gap: 10px;">
                 <button id="btn-resolver-inbox" class="btn btn-primary" style="padding: 6px 12px; font-size: 0.85rem;" onclick="resolverAtendimentoInbox()" title="Encerrar / Devolver pro Bot">
