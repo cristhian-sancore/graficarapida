@@ -618,14 +618,19 @@ def send_evolution_whatsapp(numero, mensagem, custom_url=None, custom_key=None, 
 
     # Sanitizar número (Apenas números ex: 5511999998888 ou 556596772226)
     num_limpo = ''.join(c for c in str(numero) if c.isdigit())
-    if not num_limpo.startswith('55') and len(num_limpo) <= 11:
+    if not num_limpo.startswith('55') and len(num_limpo) in (8, 9, 10, 11):
         num_limpo = '55' + num_limpo
 
     numeros_para_tentar = [num_limpo]
-    if len(num_limpo) == 13 and num_limpo.startswith('55'):
-        num_sem_9 = num_limpo[:4] + num_limpo[5:]
-        if num_sem_9 not in numeros_para_tentar:
-            numeros_para_tentar.append(num_sem_9)
+    if num_limpo.startswith('55'):
+        if len(num_limpo) == 12:
+            num_com_9 = num_limpo[:4] + '9' + num_limpo[4:]
+            if num_com_9 not in numeros_para_tentar:
+                numeros_para_tentar.append(num_com_9)
+        elif len(num_limpo) == 13:
+            num_sem_9 = num_limpo[:4] + num_limpo[5:]
+            if num_sem_9 not in numeros_para_tentar:
+                numeros_para_tentar.append(num_sem_9)
 
     headers = {
         'Content-Type': 'application/json',
@@ -1918,26 +1923,38 @@ def webhook_evolution():
         if not data or not isinstance(data, dict):
             return jsonify({'status': 'ignorado'}), 200
             
-        event = data.get('event')
-        if event and event != 'messages.upsert':
-            return jsonify({'status': 'ignorado'}), 200
+        event_raw = str(data.get('event') or data.get('type') or '').strip().lower()
+        if event_raw and not any(k in event_raw for k in ['message', 'upsert', 'send']):
+            return jsonify({'status': 'ignorado, evento nao eh mensagem'}), 200
             
         data_payload = data.get('data', {})
         if isinstance(data_payload, list):
-            if len(data_payload) > 0:
-                data_payload = data_payload[0]
-            else:
-                return jsonify({'status': 'ignorado'}), 200
-                
-        messages = data_payload.get('message', {})
-        if not messages:
-            return jsonify({'status': 'ignorado'}), 200
+            data_payload = data_payload[0] if len(data_payload) > 0 else {}
             
-        remote_jid = data_payload.get('key', {}).get('remoteJid', '')
+        messages = data_payload.get('message') if isinstance(data_payload, dict) else {}
+        if not messages and isinstance(data_payload, dict):
+            messages = data_payload
+            
+        remote_jid = (data_payload.get('key', {}).get('remoteJid') or 
+                      data_payload.get('remoteJid') or 
+                      data.get('remoteJid') or '')
         
-        text = messages.get('conversation') or messages.get('extendedTextMessage', {}).get('text')
+        text = None
+        if isinstance(messages, dict):
+            text = (messages.get('conversation') or 
+                    messages.get('extendedTextMessage', {}).get('text') or 
+                    messages.get('text') or 
+                    messages.get('caption'))
+
+        if not text and isinstance(data_payload, dict):
+            text = (data_payload.get('conversation') or 
+                    data_payload.get('text') or 
+                    data_payload.get('caption') or 
+                    data_payload.get('body'))
+                    
         messageType = data_payload.get('messageType')
-        if not messageType and messages:
+        if not messageType and isinstance(messages, dict) and messages:
+            messageType = list(messages.keys())[0] if list(messages.keys())[0] != 'messageContextInfo' else (list(messages.keys())[1] if len(messages)>1 else 'text')
             messageType = list(messages.keys())[0] if list(messages.keys())[0] != 'messageContextInfo' else (list(messages.keys())[1] if len(messages)>1 else 'text')
 
         # Se for mídia, vamos tentar pegar o base64
@@ -2168,7 +2185,10 @@ def webhook_evolution():
             
             if bot_reply:
                 send_evolution_whatsapp(telefone, bot_reply)
-                cursor.execute("INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem) VALUES (?, 'admin', 'Assistente Virtual', ?, ?)", (codigo, telefone, bot_reply))
+                if cursor.is_postgres:
+                    cursor.execute("INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem) VALUES (%s, 'admin', 'Assistente Virtual', %s, %s)", (codigo, telefone, bot_reply))
+                else:
+                    cursor.execute("INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem) VALUES (?, 'admin', 'Assistente Virtual', ?, ?)", (codigo, telefone, bot_reply))
                 conn.commit()
 
         conn.close()
