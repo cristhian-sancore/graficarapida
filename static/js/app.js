@@ -2499,7 +2499,7 @@ async function loadWhatsAppInbox() {
       return;
     }
     
-    list.innerHTML = conversas.map(c => {
+    const items = await Promise.all(conversas.map(async c => {
       const time = new Date(c.data_envio).toLocaleTimeString([], {hour: "2-digit", minute:"2-digit"});
       const bg = (currentInboxTel === c.telefone_cliente) ? "rgba(255,255,255,0.1)" : "transparent";
       const unreadBadge = c.nao_lidas > 0 ? `<span class="badge badge-danger" style="border-radius: 50%; padding: 2px 6px; font-size: 0.7rem;">${c.nao_lidas}</span>` : "";
@@ -2512,6 +2512,17 @@ async function loadWhatsAppInbox() {
         ? `<div style="width: 42px; height: 42px; border-radius: 50%; background-image: url('${c.foto_url}'); background-size: cover; background-position: center; flex-shrink: 0;"></div>`
         : `<div style="width: 42px; height: 42px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; color: #fff; flex-shrink: 0;">${iniciais}</div>`;
 
+      let previewText = `${c.remetente_tipo === "admin" ? "Você: " : ""}${formatChatMessagePreview(c.mensagem)}`;
+      try {
+        const pRes = await fetch(`/api/chat/presenca/${encodeURIComponent(c.telefone_cliente)}`);
+        if (pRes.ok) {
+          const pData = await pRes.json();
+          if (pData.digitando) {
+            previewText = `<span style="color: #10b981; font-weight: 600;"><i class="fas fa-pencil-alt me-1"></i> digitando...</span>`;
+          }
+        }
+      } catch(e) {}
+
       return `
         <div style="padding: 15px; border-bottom: 1px solid var(--border); cursor: pointer; background: ${bg}; display: flex; gap: 12px; align-items: center;" onclick="abrirInboxChat('${c.telefone_cliente}', '${c.remetente_nome}')">
           ${avatarHtml}
@@ -2522,14 +2533,16 @@ async function loadWhatsAppInbox() {
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <span style="font-size: 0.85rem; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                    ${c.remetente_tipo === "admin" ? "Você: " : ""}${formatChatMessagePreview(c.mensagem)}
+                    ${previewText}
                 </span>
                 ${unreadBadge}
             </div>
           </div>
         </div>
       `;
-    }).join("");
+    }));
+    
+    list.innerHTML = items.join("");
     
   } catch(e) {}
 }
@@ -2617,7 +2630,7 @@ async function abrirInboxChat(telefone, nome) {
   checkUnreadBadges();
   
   if (inboxInterval) clearInterval(inboxInterval);
-  inboxInterval = setInterval(carregarMensagensInbox, 5000);
+  inboxInterval = setInterval(carregarMensagensInbox, 1500);
 }
 
 function salvarContatoInbox() {

@@ -212,6 +212,7 @@ def init_db():
         )
     ''')
     safe_add_column(cursor, conn, 'mensagens_chat', 'foto_url TEXT')
+    safe_add_column(cursor, conn, 'mensagens_chat', 'wpp_id TEXT')
 
     # Configurações do Site / CMS / Evolution API
     cursor.execute('''
@@ -2163,8 +2164,9 @@ def webhook_evolution():
             conn.close()
             return jsonify({'status': 'sucesso, fromMe processado'}), 200
 
-        # Extrai foto do webhook se enviada no payload
+        # Extrai foto e wpp_id do webhook se enviada no payload
         data_inner = data.get('data', {})
+        wpp_id = data_inner.get('key', {}).get('id') or data_inner.get('id') or ''
         foto_webhook = (data_inner.get('profilePictureUrl') or 
                         data_inner.get('pictureUrl') or 
                         data_inner.get('sender', {}).get('profilePictureUrl') or 
@@ -2172,9 +2174,9 @@ def webhook_evolution():
 
         # 1. Salva a mensagem recebida do cliente
         cursor.execute('''
-            INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem, foto_url)
-            VALUES (?, 'cliente', ?, ?, ?, ?)
-        ''', (codigo, push_name, telefone, text, foto_webhook))
+            INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem, foto_url, wpp_id)
+            VALUES (?, 'cliente', ?, ?, ?, ?, ?)
+        ''', (codigo, push_name, telefone, text, foto_webhook, wpp_id))
         if foto_webhook:
             try:
                 if cursor.is_postgres:
@@ -2571,13 +2573,22 @@ def api_chat_telefone_read(telefone):
             api_url = (cfg.get('evolution_api_url') or '').strip().rstrip('/')
             api_key = (cfg.get('evolution_api_key') or '').strip()
             instance = (cfg.get('evolution_instance') or '').strip()
+            
+            # Buscar último wpp_id do cliente para informar à Evolution API
+            if cursor.is_postgres:
+                cursor.execute("SELECT wpp_id FROM mensagens_chat WHERE telefone_cliente = %s AND remetente_tipo = 'cliente' AND wpp_id IS NOT NULL AND wpp_id != '' ORDER BY id DESC LIMIT 1", (telefone,))
+            else:
+                cursor.execute("SELECT wpp_id FROM mensagens_chat WHERE telefone_cliente = ? AND remetente_tipo = 'cliente' AND wpp_id IS NOT NULL AND wpp_id != '' ORDER BY id DESC LIMIT 1", (telefone,))
+            row_wpp = cursor.fetchone()
+            target_wpp_id = row_wpp[0] if row_wpp and row_wpp[0] else "read_all"
+            
             if api_url and api_key and instance:
                 url_read = f"{api_url}/chat/markMessageAsRead/{instance}"
                 req_read = urllib.request.Request(url_read, method='POST')
                 req_read.add_header('Content-Type', 'application/json')
                 req_read.add_header('apikey', api_key)
                 req_read.add_header('User-Agent', 'Mozilla/5.0')
-                payload_read = json.dumps({"readMessages": [{"remoteJid": f"{telefone}@s.whatsapp.net", "fromMe": False}]}).encode('utf-8')
+                payload_read = json.dumps({"readMessages": [{"remoteJid": f"{telefone}@s.whatsapp.net", "fromMe": False, "id": target_wpp_id}]}).encode('utf-8')
                 with urllib.request.urlopen(req_read, data=payload_read, timeout=5, context=ctx_unverified) as res_read:
                     pass
     except Exception as err:
