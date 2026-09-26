@@ -2024,7 +2024,7 @@ def webhook_evolution():
             presences = data_payload.get('presences')
             if isinstance(presences, dict):
                 for p_key, p_val in presences.items():
-                    if not remote_jid:
+                    if not remote_jid or '@lid' in remote_jid:
                         remote_jid = p_key
                     if isinstance(p_val, dict):
                         pres_state = p_val.get('lastKnownPresence') or p_val.get('presence') or ''
@@ -2042,31 +2042,58 @@ def webhook_evolution():
                 num_limpo = ''.join(c for c in str(telefone) if c.isdigit())
                 sufixo = num_limpo[-8:] if len(num_limpo) >= 8 else num_limpo
                 import time
-                CLIENT_PRESENCE[sufixo] = {
-                    'presence': str(pres_state).lower(),
-                    'time': time.time()
-                }
-                print(f"[Presence Event] Sufixo {sufixo} -> presence: {pres_state}")
+                if sufixo:
+                    CLIENT_PRESENCE[sufixo] = {
+                        'presence': str(pres_state).lower(),
+                        'time': time.time(),
+                        'jid': remote_jid
+                    }
+                    print(f"[Presence Event] Sufixo {sufixo} -> presence: {pres_state}")
             return jsonify({'status': 'sucesso, presenca'}), 200
 
         # 2. Tratar atualização de leitura de mensagem (lida = 1 no DB via keyId)
         if 'update' in event_raw and 'upsert' not in event_raw:
             data_payload = data.get('data', {})
+            if isinstance(data_payload, list) and len(data_payload) > 0:
+                data_payload = data_payload[0]
+                
             key_id = (data_payload.get('keyId') or 
                       data_payload.get('key', {}).get('id') or 
                       data_payload.get('id') or '')
             status_ack = str(data_payload.get('status') or '').upper()
             
-            if key_id and any(st in status_ack for st in ['READ', '4', 'DELIVERY_ACK', '3']):
+            remote_jid = (data_payload.get('remoteJid') or 
+                          data_payload.get('key', {}).get('remoteJid') or '')
+            telefone_update = remote_jid.split('@')[0] if remote_jid else ''
+            
+            if (key_id or telefone_update) and any(st in status_ack for st in ['READ', '4', 'DELIVERY_ACK', '3']):
                 conn = get_db()
                 cursor = conn.cursor()
-                if cursor.is_postgres:
-                    cursor.execute("UPDATE mensagens_chat SET lida = 1 WHERE wpp_id = %s OR wpp_id LIKE %s", (key_id, f"%{key_id}%"))
-                else:
-                    cursor.execute("UPDATE mensagens_chat SET lida = 1 WHERE wpp_id = ? OR wpp_id LIKE ?", (key_id, f"%{key_id}%"))
+                
+                # Se telefone_update for @lid ou vazio, tenta achar o telefone correto no DB usando o wpp_id
+                if key_id and (not telefone_update or 'lid' in telefone_update):
+                    if cursor.is_postgres:
+                        cursor.execute("SELECT telefone_cliente FROM mensagens_chat WHERE wpp_id = %s OR wpp_id LIKE %s LIMIT 1", (key_id, f"%{key_id}%"))
+                    else:
+                        cursor.execute("SELECT telefone_cliente FROM mensagens_chat WHERE wpp_id = ? OR wpp_id LIKE ? LIMIT 1", (key_id, f"%{key_id}%"))
+                    row = cursor.fetchone()
+                    if row:
+                        telefone_update = row[0]
+                        
+                if telefone_update and 'lid' not in telefone_update:
+                    if cursor.is_postgres:
+                        cursor.execute("UPDATE mensagens_chat SET lida = 1 WHERE telefone_cliente = %s AND remetente_tipo = 'admin'", (telefone_update,))
+                    else:
+                        cursor.execute("UPDATE mensagens_chat SET lida = 1 WHERE telefone_cliente = ? AND remetente_tipo = 'admin'", (telefone_update,))
+                elif key_id:
+                    if cursor.is_postgres:
+                        cursor.execute("UPDATE mensagens_chat SET lida = 1 WHERE wpp_id = %s OR wpp_id LIKE %s", (key_id, f"%{key_id}%"))
+                    else:
+                        cursor.execute("UPDATE mensagens_chat SET lida = 1 WHERE wpp_id = ? OR wpp_id LIKE ?", (key_id, f"%{key_id}%"))
+                
                 conn.commit()
                 conn.close()
-                print(f"[Read Update Success] Mensagem {key_id} marcada como lida (lida=1)")
+                print(f"[Read Update Success] Mensagens atualizadas para lida=1 (key={key_id}, telefone={telefone_update})")
                 return jsonify({'status': 'sucesso, status lida atualizado'}), 200
             
         data_payload = data.get('data', {})
