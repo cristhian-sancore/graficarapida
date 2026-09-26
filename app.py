@@ -602,7 +602,8 @@ def send_evolution_whatsapp(numero, mensagem, custom_url=None, custom_key=None, 
         cursor = conn.cursor()
         cursor.execute('SELECT evolution_api_url, evolution_api_key, evolution_instance, validar_whatsapp_ativo FROM configuracoes LIMIT 1')
         row = cursor.fetchone()
-        conn.close()
+        if not has_request_context():
+            conn.close()
         cfg = dict(row) if row else {}
         api_url = (cfg.get('evolution_api_url') or '').strip().rstrip('/')
         api_key = (cfg.get('evolution_api_key') or '').strip()
@@ -687,7 +688,8 @@ def get_current_client(token):
     cursor = conn.cursor()
     cursor.execute('SELECT id, nome, email, telefone, endereco, status_validacao FROM clientes WHERE token_sessao = ?', (token,))
     row = cursor.fetchone()
-    conn.close()
+    if not has_request_context():
+        conn.close()
     return dict(row) if row else None
 
 def get_current_admin(token):
@@ -697,7 +699,8 @@ def get_current_admin(token):
     cursor = conn.cursor()
     cursor.execute('SELECT id, usuario, nome FROM usuarios_admin WHERE token_sessao = ?', (token,))
     row = cursor.fetchone()
-    conn.close()
+    if not has_request_context():
+        conn.close()
     return dict(row) if row else None
 
 # --- ROTAS FRONTEND ---
@@ -1943,7 +1946,8 @@ def webhook_evolution():
             cursor = conn.cursor()
             cursor.execute('SELECT evolution_api_url, evolution_api_key, evolution_instance FROM configuracoes LIMIT 1')
             cfg = cursor.fetchone()
-            conn.close()
+            if not has_request_context():
+                conn.close()
             
             if cfg and dict(cfg).get('evolution_api_url'):
                 try:
