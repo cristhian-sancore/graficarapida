@@ -420,24 +420,34 @@ def webhook_evolution():
             codigo = last_ref[0] if last_ref and last_ref[0] else "GERAL"
         
         
+        # Extrai foto e wpp_id do webhook se enviada no payload
+        data_inner = data.get('data', {})
+        wpp_id = data_inner.get('key', {}).get('id') or data_inner.get('id') or ''
+        
         if is_from_me:
             # Se a mensagem foi enviada pelo celular do admin ou pela API, salva se nao for duplicada
+            if wpp_id:
+                if cursor.is_postgres:
+                    cursor.execute("SELECT id FROM mensagens_chat WHERE wpp_id = %s", (wpp_id,))
+                else:
+                    cursor.execute("SELECT id FROM mensagens_chat WHERE wpp_id = ?", (wpp_id,))
+                if cursor.fetchone():
+                    conn.close()
+                    return jsonify({'status': 'sucesso, fromMe duplicado ignorado pelo wpp_id'}), 200
+            
             if cursor.is_postgres:
                 cursor.execute("SELECT id FROM mensagens_chat WHERE telefone_cliente = %s AND mensagem = %s AND remetente_tipo = 'admin' ORDER BY id DESC LIMIT 1", (telefone, text))
             else:
                 cursor.execute("SELECT id FROM mensagens_chat WHERE telefone_cliente = ? AND mensagem = ? AND remetente_tipo = 'admin' ORDER BY id DESC LIMIT 1", (telefone, text))
             if not cursor.fetchone():
                 cursor.execute('''
-                    INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem)
-                    VALUES (?, 'admin', 'Atendente (Celular)', ?, ?)
-                ''', (codigo, telefone, text))
+                    INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem, wpp_id)
+                    VALUES (?, 'admin', 'Atendente (Celular)', ?, ?, ?)
+                ''', (codigo, telefone, text, wpp_id))
                 conn.commit()
             conn.close()
             return jsonify({'status': 'sucesso, fromMe processado'}), 200
 
-        # Extrai foto e wpp_id do webhook se enviada no payload
-        data_inner = data.get('data', {})
-        wpp_id = data_inner.get('key', {}).get('id') or data_inner.get('id') or ''
         foto_webhook = (data_inner.get('profilePictureUrl') or 
                         data_inner.get('pictureUrl') or 
                         data_inner.get('sender', {}).get('profilePictureUrl') or 
