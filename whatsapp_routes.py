@@ -367,14 +367,26 @@ def webhook_evolution():
                         b64_res = json.loads(res_b64.read().decode('utf-8'))
                         b64_data = b64_res.get('base64')
                         if b64_data:
-                            # b64_data is usually "data:image/jpeg;base64,/9j/..."
+                            # Try to extract mimetype from message
+                            mimetype = ''
+                            if isinstance(messages, dict) and messageType in messages:
+                                mimetype = messages[messageType].get('mimetype', '')
+                            if not mimetype and isinstance(data_payload, dict):
+                                mimetype = data_payload.get('mimetype', '')
+
                             ext = 'bin'
-                            if 'image/jpeg' in b64_data: ext = 'jpg'
-                            elif 'image/png' in b64_data: ext = 'png'
-                            elif 'image/webp' in b64_data: ext = 'webp'
-                            elif 'audio/ogg' in b64_data or 'audio/mp4' in b64_data or 'audio/' in b64_data: ext = 'ogg'
-                            elif 'video/mp4' in b64_data: ext = 'mp4'
-                            elif 'application/pdf' in b64_data: ext = 'pdf'
+                            if 'image/jpeg' in mimetype or 'image/jpeg' in b64_data: ext = 'jpg'
+                            elif 'image/png' in mimetype or 'image/png' in b64_data: ext = 'png'
+                            elif 'image/webp' in mimetype or 'image/webp' in b64_data: ext = 'webp'
+                            elif 'audio' in mimetype or 'audio' in b64_data: ext = 'ogg'
+                            elif 'video' in mimetype or 'video' in b64_data: ext = 'mp4'
+                            elif 'pdf' in mimetype or 'pdf' in b64_data: ext = 'pdf'
+                            
+                            if ext == 'bin':
+                                if 'image' in messageType: ext = 'jpg'
+                                elif 'audio' in messageType: ext = 'ogg'
+                                elif 'video' in messageType: ext = 'mp4'
+                                elif 'document' in messageType: ext = 'pdf'
                             
                             b64_content = b64_data.split(',')[-1] if ',' in b64_data else b64_data
                             import base64
