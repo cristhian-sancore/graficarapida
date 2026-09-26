@@ -2482,7 +2482,7 @@ async function loadWhatsAppInbox() {
       const unreadBadge = c.nao_lidas > 0 ? `<span class="badge badge-danger" style="border-radius: 50%; padding: 2px 6px; font-size: 0.7rem;">${c.nao_lidas}</span>` : "";
       
       const displayName = c.remetente_nome || c.telefone_cliente;
-      const nome = c.referencia_codigo === "GERAL" ? displayName : `${c.referencia_codigo} (${displayName})`;
+      const nome = displayName;
       const iniciais = displayName.substring(0, 2).toUpperCase();
       
       const avatarHtml = c.foto_url

@@ -7,6 +7,8 @@ import uuid
 import random
 import urllib.request
 import urllib.parse
+import ssl
+ctx_unverified = ssl._create_unverified_context()
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, send_from_directory, g, has_request_context
 from werkzeug.utils import secure_filename
@@ -659,7 +661,7 @@ def send_evolution_whatsapp(numero, mensagem, custom_url=None, custom_key=None, 
         payload = json.dumps(payload_dict).encode('utf-8')
         try:
             req = urllib.request.Request(endpoint, data=payload, headers=headers, method='POST')
-            with urllib.request.urlopen(req, timeout=12) as response:
+            with urllib.request.urlopen(req, timeout=12, context=ctx_unverified) as response:
                 res_body = response.read().decode('utf-8')
                 print(f"[Evolution API Success] WhatsApp enviado para {target_num}: {res_body}")
                 return True, res_body
@@ -1957,7 +1959,7 @@ def webhook_evolution():
                     req_b64.add_header('Content-Type', 'application/json')
                     req_b64.add_header('apikey', dict(cfg)['evolution_api_key'])
                     payload_b64 = json.dumps({"message": data_payload}).encode('utf-8')
-                    with urllib.request.urlopen(req_b64, data=payload_b64, timeout=10) as res_b64:
+                    with urllib.request.urlopen(req_b64, data=payload_b64, timeout=10, context=ctx_unverified) as res_b64:
                         b64_res = json.loads(res_b64.read().decode('utf-8'))
                         b64_data = b64_res.get('base64')
                         if b64_data:
@@ -2029,11 +2031,26 @@ def webhook_evolution():
             conn.close()
             return jsonify({'status': 'sucesso, fromMe processado'}), 200
 
+        # Extrai foto do webhook se enviada no payload
+        data_inner = data.get('data', {})
+        foto_webhook = (data_inner.get('profilePictureUrl') or 
+                        data_inner.get('pictureUrl') or 
+                        data_inner.get('sender', {}).get('profilePictureUrl') or 
+                        data_inner.get('sender', {}).get('pictureUrl'))
+
         # 1. Salva a mensagem recebida do cliente
         cursor.execute('''
-            INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem)
-            VALUES (?, 'cliente', ?, ?, ?)
-        ''', (codigo, push_name, telefone, text))
+            INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem, foto_url)
+            VALUES (?, 'cliente', ?, ?, ?, ?)
+        ''', (codigo, push_name, telefone, text, foto_webhook))
+        if foto_webhook:
+            try:
+                if cursor.is_postgres:
+                    cursor.execute("UPDATE mensagens_chat SET foto_url = %s WHERE telefone_cliente = %s", (foto_webhook, telefone))
+                else:
+                    cursor.execute("UPDATE mensagens_chat SET foto_url = ? WHERE telefone_cliente = ?", (foto_webhook, telefone))
+            except:
+                pass
         conn.commit()
 
         # 2. Automação do Bot
@@ -2078,22 +2095,34 @@ def webhook_evolution():
         if match:
             # Cliente digitou um código específico com a hashtag
             prefix = codigo.split('-')[0]
-            status_msg = ""
             if prefix == "#GF":
-                cursor.execute('SELECT status_producao, total FROM pedidos WHERE codigo_pedido = ?', (codigo,))
+                codigo_limpo = codigo.lstrip('#')
+                if cursor.is_postgres:
+                    cursor.execute('SELECT status_producao, total FROM pedidos WHERE codigo_pedido = %s OR codigo_pedido = %s', (codigo, codigo_limpo))
+                else:
+                    cursor.execute('SELECT status_producao, total FROM pedidos WHERE codigo_pedido = ? OR codigo_pedido = ?', (codigo, codigo_limpo))
                 row = cursor.fetchone()
                 if row:
                     row_dict = dict(row) if hasattr(row, 'keys') else {'status_producao': row[0], 'total': row[1]}
-                    status_msg = f"Seu pedido {codigo} está atualmente: *{row_dict['status_producao']}*.\nValor total: R$ {row_dict['total']:.2f}".replace('.', ',')
+                    status_str = f"Seu pedido *{codigo}* está atualmente: *{row_dict['status_producao']}*.\nValor total: R$ {row_dict['total']:.2f}".replace('.', ',')
+                    bot_reply = f"🤖 *Assistente Automático*\nOlá! Encontrei as informações do seu pedido:\n\n{status_str}\n\nSe precisar falar com um humano, mande outra mensagem."
+                else:
+                    bot_reply = f"🤖 *Assistente Automático*\nNão encontrei nenhum pedido com o código *{codigo}* em nosso sistema.\n\nPor favor, verifique se digitou o código corretamente ou digite *3* para falar com um atendente."
             elif prefix == "#ORC":
-                cursor.execute('SELECT status, valor_estimado FROM orcamentos WHERE codigo_orcamento = ?', (codigo,))
+                codigo_limpo = codigo.lstrip('#')
+                if cursor.is_postgres:
+                    cursor.execute('SELECT status, valor_estimado FROM orcamentos WHERE codigo_orcamento = %s OR codigo_orcamento = %s', (codigo, codigo_limpo))
+                else:
+                    cursor.execute('SELECT status, valor_estimado FROM orcamentos WHERE codigo_orcamento = ? OR codigo_orcamento = ?', (codigo, codigo_limpo))
                 row = cursor.fetchone()
                 if row:
                     row_dict = dict(row) if hasattr(row, 'keys') else {'status': row[0], 'valor_estimado': row[1]}
-                    status_msg = f"Seu orçamento {codigo} está: *{row_dict['status']}*.\nValor estimado: R$ {row_dict['valor_estimado']:.2f}".replace('.', ',')
-            
-            if status_msg:
-                bot_reply = f"🤖 *Assistente Automático*\nOlá! Encontrei as informações solicitadas:\n\n{status_msg}\n\nSe precisar falar com um humano, mande outra mensagem."
+                    status_str = f"Seu orçamento *{codigo}* está: *{row_dict['status']}*.\nValor estimado: R$ {row_dict['valor_estimado']:.2f}".replace('.', ',')
+                    bot_reply = f"🤖 *Assistente Automático*\nOlá! Encontrei as informações do seu orçamento:\n\n{status_str}\n\nSe precisar falar com um humano, mande outra mensagem."
+                else:
+                    bot_reply = f"🤖 *Assistente Automático*\nNão encontrei nenhum orçamento com o código *{codigo}* em nosso sistema.\n\nPor favor, verifique se digitou o código corretamente ou digite *3* para falar com um atendente."
+            else:
+                bot_reply = f"🤖 *Assistente Automático*\nRecebi o código *{codigo}*, mas não localizei registros associados a ele em nosso sistema.\n\nSe preferir, digite *3* para falar com um atendente."
         else:
             # Fluxo normal do menu
             if diff > 1200:
@@ -2208,7 +2237,7 @@ def api_chat_contato(telefone):
                         if foto_url: break
                         try:
                             req_foto = urllib.request.Request(f_url, data=p_data, headers=headers, method='POST')
-                            with urllib.request.urlopen(req_foto, timeout=4) as resp:
+                            with urllib.request.urlopen(req_foto, timeout=4, context=ctx_unverified) as resp:
                                 foto_data = json.loads(resp.read().decode('utf-8'))
                                 if isinstance(foto_data, dict):
                                     foto_url = (foto_data.get('profilePictureUrl') or 
@@ -2226,7 +2255,7 @@ def api_chat_contato(telefone):
                     try:
                         get_ep = f"{api_url}/chat/fetchProfilePictureUrl/{instance}?number={num_limpo}"
                         req_get = urllib.request.Request(get_ep, headers=headers, method='GET')
-                        with urllib.request.urlopen(req_get, timeout=4) as resp:
+                        with urllib.request.urlopen(req_get, timeout=4, context=ctx_unverified) as resp:
                             foto_data = json.loads(resp.read().decode('utf-8'))
                             if isinstance(foto_data, dict):
                                 foto_url = (foto_data.get('profilePictureUrl') or foto_data.get('pictureUrl') or foto_data.get('picture') or foto_data.get('url'))
@@ -2242,7 +2271,7 @@ def api_chat_contato(telefone):
                 for c_ep, c_payload in contact_endpoints:
                     try:
                         req_contact = urllib.request.Request(c_ep, data=c_payload, headers=headers, method='POST')
-                        with urllib.request.urlopen(req_contact, timeout=4) as resp:
+                        with urllib.request.urlopen(req_contact, timeout=4, context=ctx_unverified) as resp:
                             contact_data = json.loads(resp.read().decode('utf-8'))
                             obj = None
                             if isinstance(contact_data, list) and len(contact_data) > 0:
