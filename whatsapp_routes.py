@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from flask import Blueprint, request, jsonify, g, has_request_context
+from flask import Blueprint, request, jsonify, g, has_request_context, current_app
 import time, json, urllib.request, ssl, os, uuid
 from datetime import datetime
 
