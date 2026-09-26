@@ -2037,21 +2037,23 @@ def webhook_evolution():
 
         # 2. Automação do Bot
         if cursor.is_postgres:
-            cursor.execute("SELECT remetente_nome, mensagem, data_envio FROM mensagens_chat WHERE telefone_cliente = %s AND remetente_tipo = 'admin' ORDER BY id DESC LIMIT 1", (telefone,))
+            cursor.execute("SELECT remetente_tipo, remetente_nome, mensagem, data_envio FROM mensagens_chat WHERE telefone_cliente = %s AND remetente_tipo IN ('admin', 'system') ORDER BY id DESC LIMIT 1", (telefone,))
         else:
-            cursor.execute("SELECT remetente_nome, mensagem, data_envio FROM mensagens_chat WHERE telefone_cliente = ? AND remetente_tipo = 'admin' ORDER BY id DESC LIMIT 1", (telefone,))
+            cursor.execute("SELECT remetente_tipo, remetente_nome, mensagem, data_envio FROM mensagens_chat WHERE telefone_cliente = ? AND remetente_tipo IN ('admin', 'system') ORDER BY id DESC LIMIT 1", (telefone,))
         
         last_admin = cursor.fetchone()
         
         # Checar tempo e remetente
         diff = 9999
+        remetente_tipo = ""
         remetente = ""
         last_msg = ""
         
         if last_admin:
-            remetente = dict(last_admin).get('remetente_nome') if hasattr(last_admin, 'keys') else last_admin[0]
-            last_msg = dict(last_admin).get('mensagem') if hasattr(last_admin, 'keys') else last_admin[1]
-            dt_str = dict(last_admin).get('data_envio') if hasattr(last_admin, 'keys') else last_admin[2]
+            remetente_tipo = dict(last_admin).get('remetente_tipo') if hasattr(last_admin, 'keys') else last_admin[0]
+            remetente = dict(last_admin).get('remetente_nome') if hasattr(last_admin, 'keys') else last_admin[1]
+            last_msg = dict(last_admin).get('mensagem') if hasattr(last_admin, 'keys') else last_admin[2]
+            dt_str = dict(last_admin).get('data_envio') if hasattr(last_admin, 'keys') else last_admin[3]
             if dt_str:
                 try:
                     if isinstance(dt_str, str):
@@ -2062,8 +2064,11 @@ def webhook_evolution():
                 except:
                     pass
         
-        # Se um humano (Atendente ou Painel) respondeu há menos de 20 minutos (1200s), PAUSA o bot.
-        if remetente and remetente != 'Assistente Virtual' and diff < 1200:
+        if remetente_tipo == 'system':
+            # Atendimento foi encerrado manualmente pelo admin.
+            diff = 9999
+        elif remetente and remetente != 'Assistente Virtual' and diff < 1200:
+            # Se um humano (Atendente ou Painel) respondeu há menos de 20 minutos, PAUSA o bot.
             conn.close()
             return jsonify({'status': 'sucesso, bot pausado devido a interacao humana'})
             
@@ -2142,6 +2147,23 @@ def webhook_evolution():
         print("Erro Webhook:", traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
+
+@app.route('/api/chat/telefone/<path:telefone>/resolve', methods=['POST'])
+def api_chat_telefone_resolve(telefone):
+    token_admin = request.headers.get('X-Admin-Token')
+    if not get_current_admin(token_admin):
+        return jsonify({'error': 'Acesso negado'}), 401
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO mensagens_chat (referencia_codigo, remetente_tipo, remetente_nome, telefone_cliente, mensagem)
+        VALUES (?, 'system', 'Sistema', ?, ?)
+    ''', ('GERAL', telefone, 'Atendimento Encerrado. O bot está ativo novamente.'))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'status': 'sucesso', 'message': 'Atendimento encerrado.'})
 
 @app.route('/api/chat/telefone/<path:telefone>', methods=['GET'])
 def api_chat_telefone_get(telefone):
