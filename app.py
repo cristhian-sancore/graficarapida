@@ -2000,13 +2000,14 @@ def webhook_evolution():
         import re
         from datetime import datetime, timedelta
         
-        match = re.search(r'(#[A-Z]+-[A-Z0-9]+)', text.upper())
+        match = re.search(r'(#?(?:GF|ORC)-[A-Z0-9]{4,12})', text.upper())
         
         conn = get_db()
         cursor = conn.cursor()
         
         if match:
-            codigo = match.group(1)
+            raw_code = match.group(1)
+            codigo = f"#{raw_code.lstrip('#')}"
         else:
             if cursor.is_postgres:
                 cursor.execute("SELECT referencia_codigo FROM mensagens_chat WHERE telefone_cliente = %s ORDER BY id DESC LIMIT 1", (telefone,))

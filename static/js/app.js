@@ -2242,6 +2242,28 @@ function fecharChatWidget() {
   if (chatWidgetInterval) clearInterval(chatWidgetInterval);
 }
 
+function formatWhatsAppText(str) {
+  if (!str) return '';
+  // 1. Escapar tags HTML para segurança
+  let text = str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  
+  // 2. Formatar *negrito*
+  text = text.replace(/\*([^\*\n]+)\*/g, '<strong>$1</strong>');
+  
+  // 3. Formatar _itálico_
+  text = text.replace(/_([^_\n]+)_/g, '<em>$1</em>');
+  
+  // 4. Formatar ~tachado~
+  text = text.replace(/~([^~\n]+)~/g, '<del>$1</del>');
+  
+  // 5. Formatar ```código```
+  text = text.replace(/```([^`\n]+)```/g, '<code style="background: rgba(255,255,255,0.1); padding: 2px 5px; border-radius: 4px;">$1</code>');
+  
+  // 6. Quebras de linha
+  text = text.replace(/\n/g, '<br>');
+  return text;
+}
+
 function renderChatMessageContent(msg) {
   if (!msg) return '';
   
@@ -2289,12 +2311,12 @@ function renderChatMessageContent(msg) {
     }
     
     if (textPart) {
-      return `<div>${textPart.replace(/\n/g, '<br>')}</div>${mediaHtml}`;
+      return `<div>${formatWhatsAppText(textPart)}</div>${mediaHtml}`;
     }
     return mediaHtml;
   }
   
-  return msg.replace(/\n/g, '<br>');
+  return formatWhatsAppText(msg);
 }
 
 function formatChatMessagePreview(msg) {
@@ -2312,9 +2334,10 @@ function formatChatMessagePreview(msg) {
     } else if (url.endsWith('.mp4') || url.endsWith('.webm') || url.endsWith('.mov')) {
       icon = '🎬 [Vídeo]';
     }
-    return text ? `${text} ${icon}` : icon;
+    const cleanText = text.replace(/[\*\_\~\`]/g, '');
+    return cleanText ? `${cleanText} ${icon}` : icon;
   }
-  return msg;
+  return msg.replace(/[\*\_\~\`]/g, '');
 }
 
 async function carregarMensagensChat() {
