@@ -3119,7 +3119,7 @@ async function toggleAudioRecording() {
             const btn = document.getElementById('btn-record-audio');
             if(btn) btn.disabled = true;
             
-            await fetch(/api/chat/telefone/ + encodeURIComponent(currentInboxTel), {
+            await fetch('/api/chat/telefone/' + encodeURIComponent(currentInboxTel), {
               method: "POST",
               headers: { "X-Admin-Token": state.adminToken, "Content-Type": "application/json" },
               body: JSON.stringify({ 
