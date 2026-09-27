@@ -1251,8 +1251,24 @@ def api_pedidos():
             return jsonify({'error': 'O carrinho está vazio.'}), 400
             
         cliente_id = None
-        if cliente.get('email'):
+        # 1. Tentar vincular pelo token do cliente logado
+        cli_token = request.headers.get('X-Client-Token')
+        if cli_token:
+            c_logado = get_current_client(cli_token)
+            if c_logado:
+                cliente_id = c_logado['id']
+        
+        # 2. Fallback: buscar por email
+        if not cliente_id and cliente.get('email'):
             cursor.execute('SELECT id FROM clientes WHERE email = ?', (cliente.get('email').strip().lower(),))
+            c_row = cursor.fetchone()
+            if c_row:
+                cliente_id = c_row['id']
+        
+        # 3. Fallback: buscar por telefone
+        if not cliente_id and cliente.get('telefone'):
+            tel_limpo = ''.join(c for c in str(cliente.get('telefone')) if c.isdigit())
+            cursor.execute('SELECT id FROM clientes WHERE telefone = ? OR telefone LIKE ?', (tel_limpo, f'%{tel_limpo[-8:]}%'))
             c_row = cursor.fetchone()
             if c_row:
                 cliente_id = c_row['id']

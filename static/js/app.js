@@ -2112,6 +2112,24 @@ function atualizarTotalCheckout() {
 
 async function finalizarPedidoCheckout() {
 
+  // === OBRIGATORIO: Cliente precisa estar logado para finalizar ===
+  if (!state.clienteLogado) {
+    Swal.fire({
+      icon: 'info',
+      title: 'Crie sua Conta ou Faca Login',
+      html: 'Para finalizar seu pedido, e necessario <b>criar uma conta</b> ou <b>fazer login</b>.<br><br>Assim voce tera acesso ao <b>historico de pedidos</b> e podera acompanhar o status!',
+      confirmButtonText: 'Criar Conta / Login',
+      confirmButtonColor: '#6366f1',
+      background: document.body.classList.contains('dark-mode') ? '#1e1e2d' : '#ffffff',
+      color: document.body.classList.contains('dark-mode') ? '#f3f4f6' : '#1f2937'
+    }).then(function(result) {
+      if (result.isConfirmed) {
+        openModal('modal-auth-cliente');
+      }
+    });
+    return;
+  }
+
   let nome = document.getElementById('checkout-nome').value.trim();
 
   let telefone = document.getElementById('checkout-telefone').value.trim();
@@ -2122,36 +2140,19 @@ async function finalizarPedidoCheckout() {
 
   const endereco = document.getElementById('checkout-endereco').value.trim();
 
-
-
-  if (state.clienteLogado) {
-
-    if (!nome) nome = state.clienteLogado.nome;
-
-    if (!telefone) telefone = state.clienteLogado.telefone;
-
-  }
-
-
+  // Preencher com dados do cliente logado se campos vazios
+  if (!nome) nome = state.clienteLogado.nome;
+  if (!telefone) telefone = state.clienteLogado.telefone;
 
   if (!nome || !telefone) {
-
     Swal.fire({
-
       icon: 'warning',
-
-      title: 'Atenção',
-
+      title: 'Atencao',
       text: 'Por favor, informe seu Nome Completo e WhatsApp!',
-
       background: document.body.classList.contains('dark-mode') ? '#1e1e2d' : '#ffffff',
-
       color: document.body.classList.contains('dark-mode') ? '#f3f4f6' : '#1f2937'
-
     });
-
     return;
-
   }
 
   if (state.carrinho.length === 0) {
@@ -2212,14 +2213,12 @@ async function finalizarPedidoCheckout() {
 
   try {
 
+    const headers = { 'Content-Type': 'application/json' };
+    if (state.clientToken) headers['X-Client-Token'] = state.clientToken;
     const res = await fetch('/api/pedidos', {
-
       method: 'POST',
-
-      headers: { 'Content-Type': 'application/json' },
-
+      headers: headers,
       body: JSON.stringify(payload)
-
     });
 
     const data = await res.json();
