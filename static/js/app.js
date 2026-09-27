@@ -470,7 +470,7 @@ async function loginCliente(e) {
 
       if (state.currentView === 'portal-cliente') carregarDadosPortalCliente();
 
-      alert(`ðŸ‘‹ Bem-vindo(a) de volta, ${data.cliente.nome}!`);
+      alert(`👋 Bem-vindo(a) de volta, ${data.cliente.nome}!`);
 
     } else {
 
