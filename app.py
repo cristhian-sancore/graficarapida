@@ -1398,6 +1398,17 @@ def update_pedido_status(pedido_id):
             VALUES ('ENTRADA', 'Venda Pedido', ?, ?, ?, ?)
         ''', (f"Pagamento Confirmado {ped_dict['codigo_pedido']}", ped_dict['total'], ped_dict['metodo_pagamento'], pedido_id))
 
+    if status_producao == 'Em Impressão' and ped_dict['status_producao'] != 'Em Impressão':
+        # Baixa automatica de estoque baseada no nome do papel
+        cursor.execute('SELECT papel, quantidade FROM itens_pedido WHERE pedido_id = ?', (pedido_id,))
+        itens = cursor.fetchall()
+        for it in itens:
+            papel = dict(it).get('papel')
+            qtd = dict(it).get('quantidade', 1)
+            if papel:
+                # Tenta achar um insumo com nome parecido
+                cursor.execute('UPDATE estoque_insumos SET quantidade_atual = quantidade_atual - ? WHERE nome_insumo LIKE ?', (qtd, f'%{papel}%'))
+
     cursor.execute('''
         UPDATE pedidos SET
             status_producao = COALESCE(?, status_producao),

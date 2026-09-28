@@ -2904,11 +2904,8 @@ async function alterarStatusPedido(id, statusProd, statusPag) {
     });
 
     if (res.ok) {
-
-      if (state.adminTab === 'kanban') loadKanbanBoard();
-
-      else loadAdminPedidos();
-
+      loadKanbanBoard();
+      loadAdminPedidos();
     }
 
   } catch (err) {
@@ -3010,11 +3007,8 @@ async function excluirPedidoAdmin(pedidoId) {
     });
 
     if (res.ok) {
-
-      if (state.adminTab === 'kanban') loadKanbanBoard();
-
-      else loadAdminPedidos();
-
+      loadKanbanBoard();
+      loadAdminPedidos();
     } else {
 
       const data = await res.json();
@@ -4957,11 +4951,13 @@ async function checkUnreadBadges() {
 
 
 
-// Global poller
-
 setInterval(checkUnreadBadges, 15000);
-
-
+// Atualiza a sidebar de conversas a cada 5 segundos se a aba WhatsApp estiver aberta
+setInterval(() => {
+  if (state.adminTab === 'whatsapp') {
+    loadWhatsAppInbox();
+  }
+}, 5000);
 
 async function loadWhatsAppInbox() {
 
@@ -5232,8 +5228,31 @@ async function abrirInboxChat(telefone, nome) {
       }
 
     }
-
   } catch(e) { console.log("Erro ao buscar contato:", e); }
+
+  // Buscar pedidos recentes do cliente
+  try {
+    const pRes = await fetch(`/api/pedidos?search=${encodeURIComponent(telefone)}`, { headers: { "X-Admin-Token": state.adminToken } });
+    if (pRes.ok) {
+      const pData = await pRes.json();
+      const pedList = document.getElementById("profile-pedidos-list");
+      if (pedList) {
+        if (pData.length === 0) {
+          pedList.innerHTML = '<span style="color:#888;">Nenhum pedido encontrado.</span>';
+        } else {
+          pedList.innerHTML = pData.slice(0, 5).map(p => `
+            <div style="padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg);">
+               <div style="font-weight: bold; color: var(--primary);">${p.codigo_pedido}</div>
+               <div style="font-size: 0.75rem; color: var(--text-muted);">${new Date(p.data_criacao).toLocaleDateString('pt-BR')}</div>
+               <div style="font-weight: bold; margin-top: 4px;">R$ ${p.total.toFixed(2).replace('.', ',')}</div>
+               <div style="font-size: 0.75rem; color: ${p.status_producao==='Entregue'?'#10b981':'#f59e0b'};">${p.status_producao}</div>
+             </div>
+          `).join('');
+        }
+      }
+    }
+  } catch(e) {}
+
 
   
 
