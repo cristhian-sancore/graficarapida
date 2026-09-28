@@ -601,50 +601,90 @@ def webhook_evolution():
             return jsonify({'status': 'sucesso, bot pausado devido a interacao humana'})
         else:
             # Fluxo normal do menu
-            if diff > 1200:
-                # Passou 20 min desde a ultima interacao do admin. Resetar para menu inicial
-                msg_bv = cfg_bot.get('msg_boas_vindas')
-                if msg_bv and msg_bv.strip() != '':
-                    bot_reply = msg_bv
+            
+            # --- NOVO MOTOR DE FLUXO VISUAL ---
+            try:
+                from bot_engine import process_bot_flow
+                bot_fluxo = cfg_bot.get('bot_fluxo_json')
+                
+                if cursor.is_postgres:
+                    cursor.execute("SELECT node_id FROM bot_estado_cliente WHERE telefone = %s", (telefone,))
                 else:
+                    cursor.execute("SELECT node_id FROM bot_estado_cliente WHERE telefone = ?", (telefone,))
+                row_estado = cursor.fetchone()
+                curr_node_id = row_estado[0] if row_estado else None
+                
+                if diff > 1200:
+                    curr_node_id = None
+                    
+                novo_node_id, bot_reply_graph = process_bot_flow(bot_fluxo, curr_node_id, text)
+                
+                if bot_reply_graph:
+                    if "__RASTREIO__" in bot_reply_graph:
+                        rastreio_text = buscar_status_por_telefone(cursor, telefone)
+                        bot_reply_graph = bot_reply_graph.replace("__RASTREIO__", rastreio_text)
+                        
+                    if "__HUMANO__:" in bot_reply_graph:
+                        bot_reply_graph = bot_reply_graph.replace("__HUMANO__:", "")
+                        novo_node_id = None
+                        
+                    bot_reply = bot_reply_graph
+                    
+                    if novo_node_id:
+                        if cursor.is_postgres:
+                            cursor.execute("INSERT INTO bot_estado_cliente (telefone, node_id) VALUES (%s, %s) ON CONFLICT (telefone) DO UPDATE SET node_id = EXCLUDED.node_id, updated_at = CURRENT_TIMESTAMP", (telefone, str(novo_node_id)))
+                        else:
+                            cursor.execute("INSERT INTO bot_estado_cliente (telefone, node_id) VALUES (?, ?) ON CONFLICT (telefone) DO UPDATE SET node_id = excluded.node_id, updated_at = CURRENT_TIMESTAMP", (telefone, str(novo_node_id)))
+                    else:
+                        if cursor.is_postgres:
+                            cursor.execute("DELETE FROM bot_estado_cliente WHERE telefone = %s", (telefone,))
+                        else:
+                            cursor.execute("DELETE FROM bot_estado_cliente WHERE telefone = ?", (telefone,))
+            except Exception as e:
+                print("Erro no motor visual:", e)
+                bot_reply_graph = None
+            
+            # --- FALLBACK: Lógica Hardcoded (se não houver fluxo visual) ---
+            if not bot_reply_graph:
+                if diff > 1200:
                     bot_reply = f"🤖 *Assistente Automático - {cfg_bot.get('nome_grafica', 'Gráfica Rápida Express')}*\nOlá! Seja bem-vindo(a)! Como posso ajudar você hoje?\n\nDigite o *NÚMERO* da opção desejada:\n1️⃣ - Abrir um novo Pedido/Orçamento\n2️⃣ - Verificar o status do meu pedido\n3️⃣ - Falar com atendente humano"
-            elif remetente == 'Assistente Virtual':
-                # Bot estava falando, processar estado
-                user_text = text.strip()
-                if "Digite o *NÚMERO* da opção" in last_msg:
-                    if user_text == '1':
-                        bot_reply = "🤖 Certo! Para começarmos, qual o seu nome completo?"
-                    elif user_text == '2':
-                        bot_reply = buscar_status_por_telefone(cursor, telefone)
-                    elif user_text == '3':
-                        bot_reply = cfg_bot.get('msg_bot_transferencia') or "🤖 Ok! Transferindo para um atendente. Por favor, aguarde um instante!"
-                    else:
-                        bot_reply = "🤖 Opção inválida. Digite 1, 2 ou 3."
-                
-                elif "qual o seu nome completo?" in last_msg:
-                    bot_reply = f"🤖 Prazer! Descreva o que você precisa fazer (ex: 1000 cartões de visita frente e verso):"
-                
-                elif "Descreva o que você precisa fazer" in last_msg:
-                    # Encontrar o nome do cliente!
-                    if cursor.is_postgres:
-                        cursor.execute("SELECT mensagem FROM mensagens_chat WHERE telefone_cliente = %s AND remetente_tipo = 'cliente' ORDER BY id DESC LIMIT 1 OFFSET 1", (telefone,))
-                    else:
-                        cursor.execute("SELECT mensagem FROM mensagens_chat WHERE telefone_cliente = ? AND remetente_tipo = 'cliente' ORDER BY id DESC LIMIT 1 OFFSET 1", (telefone,))
+                elif remetente == 'Assistente Virtual':
+                    # Bot estava falando, processar estado
+                    user_text = text.strip()
+                    if "Digite o *NÚMERO* da opção" in last_msg:
+                        if user_text == '1':
+                            bot_reply = "🤖 Certo! Para começarmos, qual o seu nome completo?"
+                        elif user_text == '2':
+                            bot_reply = buscar_status_por_telefone(cursor, telefone)
+                        elif user_text == '3':
+                            bot_reply = cfg_bot.get('msg_bot_transferencia') or "🤖 Ok! Transferindo para um atendente. Por favor, aguarde um instante!"
+                        else:
+                            bot_reply = "🤖 Opção inválida. Digite 1, 2 ou 3."
                     
-                    row = cursor.fetchone()
-                    nome_cliente = row[0] if row else push_name
-                    descricao = user_text
+                    elif "qual o seu nome completo?" in last_msg:
+                        bot_reply = f"🤖 Prazer! Descreva o que você precisa fazer (ex: 1000 cartões de visita frente e verso):"
                     
-                    import uuid
-                    orc_codigo = f"#ORC-{datetime.now().strftime('%m%d')}{uuid.uuid4().hex[:4].upper()}"
-                    
-                    cursor.execute('''
-                        INSERT INTO orcamentos (codigo_orcamento, cliente_nome, cliente_telefone, descricao, valor_estimado, status)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ''', (orc_codigo, nome_cliente, telefone, descricao, 0, 'Pendente'))
-                    
-                    msg_base = cfg_bot.get('msg_orcamento_recebido') or "✅ Tudo pronto! Registramos sua solicitação sob o código *{codigo}*.\nEm breve nossa equipe enviará os valores!"
-                    bot_reply = msg_base.replace('{codigo}', orc_codigo)
+                    elif "Descreva o que você precisa fazer" in last_msg:
+                        # Encontrar o nome do cliente!
+                        if cursor.is_postgres:
+                            cursor.execute("SELECT mensagem FROM mensagens_chat WHERE telefone_cliente = %s AND remetente_tipo = 'cliente' ORDER BY id DESC LIMIT 1 OFFSET 1", (telefone,))
+                        else:
+                            cursor.execute("SELECT mensagem FROM mensagens_chat WHERE telefone_cliente = ? AND remetente_tipo = 'cliente' ORDER BY id DESC LIMIT 1 OFFSET 1", (telefone,))
+                        
+                        row = cursor.fetchone()
+                        nome_cliente = row[0] if row else push_name
+                        descricao = user_text
+                        
+                        import uuid
+                        orc_codigo = f"#ORC-{datetime.now().strftime('%m%d')}{uuid.uuid4().hex[:4].upper()}"
+                        
+                        cursor.execute('''
+                            INSERT INTO orcamentos (codigo_orcamento, cliente_nome, cliente_telefone, descricao, valor_estimado, status)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        ''', (orc_codigo, nome_cliente, telefone, descricao, 0, 'Pendente'))
+                        
+                        msg_base = cfg_bot.get('msg_orcamento_recebido') or "✅ Tudo pronto! Registramos sua solicitação sob o código *{codigo}*.\nEm breve nossa equipe enviará os valores!"
+                        bot_reply = msg_base.replace('{codigo}', orc_codigo)
             
         if bot_reply:
             send_evolution_whatsapp(telefone, bot_reply)

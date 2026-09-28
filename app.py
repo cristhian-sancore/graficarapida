@@ -261,6 +261,16 @@ def init_db():
     safe_add_column(cursor, conn, 'configuracoes', 'bot_fluxo_json TEXT')
     safe_add_column(cursor, conn, 'configuracoes', 'bot_ativo INTEGER DEFAULT 1')
 
+    # Bot Estado (para rastrear em qual nó o cliente está no fluxo visual)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS bot_estado_cliente (
+            telefone TEXT PRIMARY KEY,
+            node_id TEXT,
+            variaveis TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
     # Produtos
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS produtos (
