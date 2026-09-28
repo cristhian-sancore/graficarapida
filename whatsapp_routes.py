@@ -596,7 +596,11 @@ def webhook_evolution():
             # Fluxo normal do menu
             if diff > 1200:
                 # Passou 20 min desde a ultima interacao do admin. Resetar para menu inicial
-                bot_reply = "🤖 *Assistente Automático - Gráfica Rápida Express*\nOlá! Seja bem-vindo(a)! Como posso ajudar você hoje?\n\nDigite o *NÚMERO* da opção desejada:\n1️⃣ - Abrir um novo Pedido/Orçamento\n2️⃣ - Verificar o status do meu pedido\n3️⃣ - Falar com atendente humano"
+                msg_bv = cfg_bot.get('msg_boas_vindas')
+                if msg_bv and msg_bv.strip() != '':
+                    bot_reply = msg_bv
+                else:
+                    bot_reply = f"🤖 *Assistente Automático - {cfg_bot.get('nome_grafica', 'Gráfica Rápida Express')}*\nOlá! Seja bem-vindo(a)! Como posso ajudar você hoje?\n\nDigite o *NÚMERO* da opção desejada:\n1️⃣ - Abrir um novo Pedido/Orçamento\n2️⃣ - Verificar o status do meu pedido\n3️⃣ - Falar com atendente humano"
             elif remetente == 'Assistente Virtual':
                 # Bot estava falando, processar estado
                 user_text = text.strip()

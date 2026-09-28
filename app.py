@@ -229,16 +229,22 @@ def init_db():
             evolution_api_url TEXT,
             evolution_api_key TEXT,
             evolution_instance TEXT,
-            validar_whatsapp_ativo INTEGER DEFAULT 1
+            validar_whatsapp_ativo INTEGER DEFAULT 1,
+            msg_boas_vindas TEXT,
+            msg_pedido_status TEXT,
+            bot_ativo INTEGER DEFAULT 1
         )
     ''')
     conn.commit()
     
-    # Migrações das configurações da Evolution API
+    # Migrações das configurações da Evolution API e Automações
     safe_add_column(cursor, conn, 'configuracoes', 'evolution_api_url TEXT')
     safe_add_column(cursor, conn, 'configuracoes', 'evolution_api_key TEXT')
     safe_add_column(cursor, conn, 'configuracoes', 'evolution_instance TEXT')
     safe_add_column(cursor, conn, 'configuracoes', 'validar_whatsapp_ativo INTEGER DEFAULT 1')
+    safe_add_column(cursor, conn, 'configuracoes', 'msg_boas_vindas TEXT')
+    safe_add_column(cursor, conn, 'configuracoes', 'msg_pedido_status TEXT')
+    safe_add_column(cursor, conn, 'configuracoes', 'bot_ativo INTEGER DEFAULT 1')
 
     # Produtos
     cursor.execute('''
@@ -1096,14 +1102,16 @@ def api_config():
                 nome_grafica = ?, whatsapp = ?, chave_pix = ?, banner_titulo = ?,
                 banner_subtitulo = ?, aviso_topo = ?, desconto_pix = ?, taxa_entrega = ?,
                 evolution_api_url = ?, evolution_api_key = ?, evolution_instance = ?,
-                validar_whatsapp_ativo = ?
+                validar_whatsapp_ativo = ?, msg_boas_vindas = ?, msg_pedido_status = ?, bot_ativo = ?
             WHERE id = (SELECT id FROM configuracoes LIMIT 1)
         ''', (
             data.get('nome_grafica'), data.get('whatsapp'), data.get('chave_pix'),
             data.get('banner_titulo'), data.get('banner_subtitulo'), data.get('aviso_topo'),
             float(data.get('desconto_pix') or 5.0), float(data.get('taxa_entrega') or 15.0),
             data.get('evolution_api_url'), data.get('evolution_api_key'), data.get('evolution_instance'),
-            1 if data.get('validar_whatsapp_ativo', True) else 0
+            1 if data.get('validar_whatsapp_ativo', True) else 0,
+            data.get('msg_boas_vindas'), data.get('msg_pedido_status'),
+            1 if str(data.get('bot_ativo', '1')) == '1' else 0
         ))
         conn.commit()
         conn.close()
@@ -1422,8 +1430,14 @@ def update_pedido_status(pedido_id):
 
     # Notificar alteração de status no WhatsApp
     if status_producao:
-        msg_update = f"📦 *Gráfica Rápida Express*\nSeu pedido *{ped_dict['codigo_pedido']}* teve o status atualizado para: *{status_producao}*!"
-        send_evolution_whatsapp(ped_dict['cliente_telefone'], msg_update)
+        cursor.execute("SELECT msg_pedido_status, bot_ativo FROM configuracoes LIMIT 1")
+        cfg = cursor.fetchone()
+        bot_ativo = cfg['bot_ativo'] if cfg else 1
+        
+        if bot_ativo:
+            msg_update = cfg['msg_pedido_status'] if cfg and cfg['msg_pedido_status'] else "📦 *Gráfica Rápida Express*\nSeu pedido *{codigo}* teve o status atualizado para: *{status}*!"
+            msg_update = msg_update.replace("{codigo}", ped_dict['codigo_pedido']).replace("{status}", status_producao)
+            send_evolution_whatsapp(ped_dict['cliente_telefone'], msg_update)
 
     return jsonify({'message': 'Status do pedido atualizado!'})
 
