@@ -984,6 +984,26 @@ async function loadConfig() {
 
     setVal('cfg-evolution-active', state.config.validar_whatsapp_ativo ? '1' : '0');
 
+    setVal('cfg-bot-ativo', state.config.bot_ativo === 0 ? '0' : '1');
+
+    setVal('cfg-msg-boas-vindas', state.config.msg_boas_vindas || '');
+
+    setVal('cfg-msg-pedido-recebido', state.config.msg_pedido_recebido || '');
+
+    setVal('cfg-msg-pedido-status', state.config.msg_pedido_status || '');
+
+    setVal('cfg-msg-orcamento-recebido', state.config.msg_orcamento_recebido || '');
+
+    setVal('cfg-msg-orcamento-status', state.config.msg_orcamento_status || '');
+
+    setVal('cfg-msg-rastreio-pedido', state.config.msg_rastreio_pedido || '');
+
+    setVal('cfg-msg-rastreio-orcamento', state.config.msg_rastreio_orcamento || '');
+
+    setVal('cfg-msg-bot-transferencia', state.config.msg_bot_transferencia || '');
+
+    setVal('cfg-msg-codigo-otp', state.config.msg_codigo_otp || '');
+
   } catch (err) {
 
     console.error('Erro ao carregar configurações:', err);
@@ -4279,7 +4299,27 @@ async function salvarConfiguracoes(e) {
 
     evolution_instance: document.getElementById('cfg-evolution-instance') ? document.getElementById('cfg-evolution-instance').value.trim() : '',
 
-    validar_whatsapp_ativo: document.getElementById('cfg-evolution-active') ? (document.getElementById('cfg-evolution-active').value === '1' ? 1 : 0) : 0
+    validar_whatsapp_ativo: document.getElementById('cfg-evolution-active') ? (document.getElementById('cfg-evolution-active').value === '1' ? 1 : 0) : 0,
+
+    bot_ativo: document.getElementById('cfg-bot-ativo') ? (document.getElementById('cfg-bot-ativo').value === '1' ? 1 : 0) : 1,
+
+    msg_boas_vindas: document.getElementById('cfg-msg-boas-vindas') ? document.getElementById('cfg-msg-boas-vindas').value : '',
+
+    msg_pedido_recebido: document.getElementById('cfg-msg-pedido-recebido') ? document.getElementById('cfg-msg-pedido-recebido').value : '',
+
+    msg_pedido_status: document.getElementById('cfg-msg-pedido-status') ? document.getElementById('cfg-msg-pedido-status').value : '',
+
+    msg_orcamento_recebido: document.getElementById('cfg-msg-orcamento-recebido') ? document.getElementById('cfg-msg-orcamento-recebido').value : '',
+
+    msg_orcamento_status: document.getElementById('cfg-msg-orcamento-status') ? document.getElementById('cfg-msg-orcamento-status').value : '',
+
+    msg_rastreio_pedido: document.getElementById('cfg-msg-rastreio-pedido') ? document.getElementById('cfg-msg-rastreio-pedido').value : '',
+
+    msg_rastreio_orcamento: document.getElementById('cfg-msg-rastreio-orcamento') ? document.getElementById('cfg-msg-rastreio-orcamento').value : '',
+
+    msg_bot_transferencia: document.getElementById('cfg-msg-bot-transferencia') ? document.getElementById('cfg-msg-bot-transferencia').value : '',
+
+    msg_codigo_otp: document.getElementById('cfg-msg-codigo-otp') ? document.getElementById('cfg-msg-codigo-otp').value : ''
 
   };
 
