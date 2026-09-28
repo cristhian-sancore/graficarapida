@@ -1103,17 +1103,40 @@ def api_config():
         cursor.execute('SELECT * FROM configuracoes LIMIT 1')
         row = cursor.fetchone()
         conn.close()
-        config = dict(row) if row else {
-            'nome_grafica': 'Gráfica Rápida Express',
-            'whatsapp': '5511999998888',
-            'chave_pix': 'pix@graficarapidaexpress.com.br',
-            'banner_titulo': 'Sua Impressão Rápida, Sem Complicação!',
-            'banner_subtitulo': 'Cartões de visita, panfletos, banners e adesivos com entrega expressa.',
-            'aviso_topo': '⚡ Atendimento Express!',
-            'desconto_pix': 5.0,
-            'taxa_entrega': 15.0,
-            'validar_whatsapp_ativo': 1
-        }
+        
+        config = dict(row) if row else {}
+        
+        # Defaults
+        config.setdefault('nome_grafica', 'Gráfica Rápida Express')
+        config.setdefault('whatsapp', '5511999998888')
+        config.setdefault('chave_pix', 'pix@graficarapidaexpress.com.br')
+        config.setdefault('banner_titulo', 'Sua Impressão Rápida, Sem Complicação!')
+        config.setdefault('banner_subtitulo', 'Cartões de visita, panfletos, banners e adesivos com entrega expressa.')
+        config.setdefault('aviso_topo', '⚡ Atendimento Express!')
+        config.setdefault('desconto_pix', 5.0)
+        config.setdefault('taxa_entrega', 15.0)
+        config.setdefault('validar_whatsapp_ativo', 1)
+        
+        # Replace null values with defaults for messages
+        if not config.get('msg_boas_vindas'):
+            config['msg_boas_vindas'] = f"🤖 *Assistente Automático - {config.get('nome_grafica')}*\nOlá! Seja bem-vindo(a)! Como posso ajudar você hoje?\n\nDigite o *NÚMERO* da opção desejada:\n1️⃣ - Abrir um novo Pedido/Orçamento\n2️⃣ - Verificar o status do meu pedido\n3️⃣ - Falar com atendente humano"
+        if not config.get('msg_pedido_recebido'):
+            config['msg_pedido_recebido'] = "✅ Seu pedido *{codigo}* foi recebido com sucesso!"
+        if not config.get('msg_pedido_status'):
+            config['msg_pedido_status'] = "🔄 O status do seu pedido *{codigo}* foi atualizado para: *{status}*"
+        if not config.get('msg_orcamento_recebido'):
+            config['msg_orcamento_recebido'] = "✅ Tudo pronto! Registramos sua solicitação sob o código *{codigo}*."
+        if not config.get('msg_orcamento_status'):
+            config['msg_orcamento_status'] = "🔄 O seu orçamento *{codigo}* foi respondido. Status: *{status}*"
+        if not config.get('msg_rastreio_pedido'):
+            config['msg_rastreio_pedido'] = "🤖 Seu pedido *{codigo}* está atualmente: *{status}*.\nValor total: R$ {valor}"
+        if not config.get('msg_rastreio_orcamento'):
+            config['msg_rastreio_orcamento'] = "🤖 Seu orçamento *{codigo}* está: *{status}*.\nValor estimado: R$ {valor}"
+        if not config.get('msg_bot_transferencia'):
+            config['msg_bot_transferencia'] = "🤖 Ok! Transferindo para um atendente. Por favor, aguarde um instante!"
+        if not config.get('msg_codigo_otp'):
+            config['msg_codigo_otp'] = "🔐 Seu código de verificação é: *{codigo}*"
+            
         return jsonify(config)
     
     elif request.method == 'PUT':
