@@ -569,8 +569,8 @@ def webhook_evolution():
                 row = cursor.fetchone()
                 if row:
                     row_dict = dict(row) if hasattr(row, 'keys') else {'status_producao': row[0], 'total': row[1]}
-                    status_str = f"Seu pedido *{codigo}* está atualmente: *{row_dict['status_producao']}*.\nValor total: R$ {row_dict['total']:.2f}".replace('.', ',')
-                    bot_reply = f"🤖 *Assistente Automático*\nOlá! Encontrei as informações do seu pedido:\n\n{status_str}\n\nSe precisar falar com um humano, mande outra mensagem."
+                    msg_base = cfg_bot.get('msg_rastreio_pedido') or "🤖 *Assistente Automático*\nOlá! Encontrei as informações do seu pedido:\n\nSeu pedido *{codigo}* está atualmente: *{status}*.\nValor total: R$ {valor}\n\nSe precisar falar com um humano, mande outra mensagem."
+                    bot_reply = msg_base.replace('{codigo}', codigo).replace('{status}', row_dict['status_producao']).replace('{valor}', f"{row_dict['total']:.2f}")
                 else:
                     bot_reply = f"🤖 *Assistente Automático*\nNão encontrei nenhum pedido com o código *{codigo}* em nosso sistema.\n\nPor favor, verifique se digitou o código corretamente ou digite *3* para falar com um atendente."
             elif prefix == "#ORC":
@@ -582,8 +582,8 @@ def webhook_evolution():
                 row = cursor.fetchone()
                 if row:
                     row_dict = dict(row) if hasattr(row, 'keys') else {'status': row[0], 'valor_estimado': row[1]}
-                    status_str = f"Seu orçamento *{codigo}* está: *{row_dict['status']}*.\nValor estimado: R$ {row_dict['valor_estimado']:.2f}".replace('.', ',')
-                    bot_reply = f"🤖 *Assistente Automático*\nOlá! Encontrei as informações do seu orçamento:\n\n{status_str}\n\nSe precisar falar com um humano, mande outra mensagem."
+                    msg_base = cfg_bot.get('msg_rastreio_orcamento') or "🤖 *Assistente Automático*\nOlá! Encontrei as informações do seu orçamento:\n\nSeu orçamento *{codigo}* está: *{status}*.\nValor estimado: R$ {valor}\n\nSe precisar falar com um humano, mande outra mensagem."
+                    bot_reply = msg_base.replace('{codigo}', codigo).replace('{status}', row_dict['status']).replace('{valor}', f"{row_dict['valor_estimado']:.2f}")
                 else:
                     bot_reply = f"🤖 *Assistente Automático*\nNão encontrei nenhum orçamento com o código *{codigo}* em nosso sistema.\n\nPor favor, verifique se digitou o código corretamente ou digite *3* para falar com um atendente."
             else:
@@ -610,7 +610,7 @@ def webhook_evolution():
                     elif user_text == '2':
                         bot_reply = buscar_status_por_telefone(cursor, telefone)
                     elif user_text == '3':
-                        bot_reply = "🤖 Ok! Transferindo para um atendente. Por favor, aguarde um instante!"
+                        bot_reply = cfg_bot.get('msg_bot_transferencia') or "🤖 Ok! Transferindo para um atendente. Por favor, aguarde um instante!"
                     else:
                         bot_reply = "🤖 Opção inválida. Digite 1, 2 ou 3."
                 
@@ -636,7 +636,8 @@ def webhook_evolution():
                         VALUES (?, ?, ?, ?, ?, ?)
                     ''', (orc_codigo, nome_cliente, telefone, descricao, 0, 'Pendente'))
                     
-                    bot_reply = f"✅ Tudo pronto! Registramos sua solicitação sob o código *{orc_codigo}*.\nEm breve nossa equipe enviará os valores!"
+                    msg_base = cfg_bot.get('msg_orcamento_recebido') or "✅ Tudo pronto! Registramos sua solicitação sob o código *{codigo}*.\nEm breve nossa equipe enviará os valores!"
+                    bot_reply = msg_base.replace('{codigo}', orc_codigo)
             
         if bot_reply:
             send_evolution_whatsapp(telefone, bot_reply)

@@ -232,6 +232,13 @@ def init_db():
             validar_whatsapp_ativo INTEGER DEFAULT 1,
             msg_boas_vindas TEXT,
             msg_pedido_status TEXT,
+            msg_pedido_recebido TEXT,
+            msg_orcamento_recebido TEXT,
+            msg_orcamento_status TEXT,
+            msg_rastreio_pedido TEXT,
+            msg_rastreio_orcamento TEXT,
+            msg_bot_transferencia TEXT,
+            msg_codigo_otp TEXT,
             bot_ativo INTEGER DEFAULT 1
         )
     ''')
@@ -244,6 +251,13 @@ def init_db():
     safe_add_column(cursor, conn, 'configuracoes', 'validar_whatsapp_ativo INTEGER DEFAULT 1')
     safe_add_column(cursor, conn, 'configuracoes', 'msg_boas_vindas TEXT')
     safe_add_column(cursor, conn, 'configuracoes', 'msg_pedido_status TEXT')
+    safe_add_column(cursor, conn, 'configuracoes', 'msg_pedido_recebido TEXT')
+    safe_add_column(cursor, conn, 'configuracoes', 'msg_orcamento_recebido TEXT')
+    safe_add_column(cursor, conn, 'configuracoes', 'msg_orcamento_status TEXT')
+    safe_add_column(cursor, conn, 'configuracoes', 'msg_rastreio_pedido TEXT')
+    safe_add_column(cursor, conn, 'configuracoes', 'msg_rastreio_orcamento TEXT')
+    safe_add_column(cursor, conn, 'configuracoes', 'msg_bot_transferencia TEXT')
+    safe_add_column(cursor, conn, 'configuracoes', 'msg_codigo_otp TEXT')
     safe_add_column(cursor, conn, 'configuracoes', 'bot_ativo INTEGER DEFAULT 1')
 
     # Produtos
@@ -1102,7 +1116,9 @@ def api_config():
                 nome_grafica = ?, whatsapp = ?, chave_pix = ?, banner_titulo = ?,
                 banner_subtitulo = ?, aviso_topo = ?, desconto_pix = ?, taxa_entrega = ?,
                 evolution_api_url = ?, evolution_api_key = ?, evolution_instance = ?,
-                validar_whatsapp_ativo = ?, msg_boas_vindas = ?, msg_pedido_status = ?, bot_ativo = ?
+                validar_whatsapp_ativo = ?, msg_boas_vindas = ?, msg_pedido_status = ?, bot_ativo = ?,
+                msg_pedido_recebido = ?, msg_orcamento_recebido = ?, msg_orcamento_status = ?,
+                msg_rastreio_pedido = ?, msg_rastreio_orcamento = ?, msg_bot_transferencia = ?, msg_codigo_otp = ?
             WHERE id = (SELECT id FROM configuracoes LIMIT 1)
         ''', (
             data.get('nome_grafica'), data.get('whatsapp'), data.get('chave_pix'),
@@ -1111,7 +1127,9 @@ def api_config():
             data.get('evolution_api_url'), data.get('evolution_api_key'), data.get('evolution_instance'),
             1 if data.get('validar_whatsapp_ativo', True) else 0,
             data.get('msg_boas_vindas'), data.get('msg_pedido_status'),
-            1 if str(data.get('bot_ativo', '1')) == '1' else 0
+            1 if str(data.get('bot_ativo', '1')) == '1' else 0,
+            data.get('msg_pedido_recebido'), data.get('msg_orcamento_recebido'), data.get('msg_orcamento_status'),
+            data.get('msg_rastreio_pedido'), data.get('msg_rastreio_orcamento'), data.get('msg_bot_transferencia'), data.get('msg_codigo_otp')
         ))
         conn.commit()
         conn.close()
