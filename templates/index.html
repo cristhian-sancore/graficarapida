@@ -857,7 +857,7 @@
                 </button>
               </div>
             </div>
-            
+          
             <!-- SEÇÃO 5: AUTOMAÇÃO E BOT -->
             <div id="cfg-tab-automa" class="cfg-tab-content" style="display: none;">
               <div style="background: rgba(37, 211, 102, 0.05); border: 1px solid rgba(37, 211, 102, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
@@ -876,17 +876,59 @@
                   <textarea class="form-control" id="cfg-msg-boas-vindas" rows="4" placeholder="Ex: Olá! Sou o assistente virtual da Gráfica. Digite 1 para..."></textarea>
                   <small style="color: #aaa;">Esta mensagem é enviada quando o cliente manda a primeira mensagem.</small>
                 </div>
+                
+                <hr style="border-color: rgba(255,255,255,0.1); margin: 25px 0;">
+                <h5 style="color: #25d366; margin-bottom: 15px;"><i class="fa-solid fa-receipt"></i> Automações de Pedido & Orçamento</h5>
+                
                 <div class="form-group">
-                  <label class="form-label">Mensagem de Atualização de Pedido</label>
+                  <label class="form-label">Confirmação de Pedido Criado (Site)</label>
+                  <textarea class="form-control" id="cfg-msg-pedido-recebido" rows="2" placeholder="Seu pedido {codigo} foi recebido com sucesso!"></textarea>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Atualização de Pedido (Painel)</label>
                   <textarea class="form-control" id="cfg-msg-pedido-status" rows="3" placeholder="Use {codigo} e {status}"></textarea>
-                  <small style="color: #aaa;">Variáveis disponíveis: <b>{codigo}</b> (Ex: #GF-1234), <b>{status}</b> (Ex: Pronto para Retirada)</small>
+                  <small style="color: #aaa;">Variáveis disponíveis: <b>{codigo}</b>, <b>{status}</b></small>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Confirmação de Orçamento (Via Bot)</label>
+                  <textarea class="form-control" id="cfg-msg-orcamento-recebido" rows="2" placeholder="Seu orçamento {codigo} foi registrado."></textarea>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Atualização de Orçamento (Painel)</label>
+                  <textarea class="form-control" id="cfg-msg-orcamento-status" rows="3" placeholder="Seu orçamento {codigo} está {status}. Valor: R$ {valor}"></textarea>
+                  <small style="color: #aaa;">Variáveis: <b>{codigo}</b>, <b>{status}</b>, <b>{valor}</b></small>
+                </div>
+
+                <hr style="border-color: rgba(255,255,255,0.1); margin: 25px 0;">
+                <h5 style="color: #25d366; margin-bottom: 15px;"><i class="fa-solid fa-magnifying-glass"></i> Respostas do Bot (Rastreio e Chat)</h5>
+
+                <div class="form-group">
+                  <label class="form-label">Resposta de Rastreio (Pedido)</label>
+                  <textarea class="form-control" id="cfg-msg-rastreio-pedido" rows="3" placeholder="Encontrei o pedido {codigo}! Status: {status} - Total: R$ {valor}"></textarea>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Resposta de Rastreio (Orçamento)</label>
+                  <textarea class="form-control" id="cfg-msg-rastreio-orcamento" rows="3" placeholder="Encontrei o orçamento {codigo}! Status: {status} - Estimado: R$ {valor}"></textarea>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Transferência para Atendente (Opção 3)</label>
+                  <textarea class="form-control" id="cfg-msg-bot-transferencia" rows="2" placeholder="Ok! Transferindo para um atendente. Aguarde..."></textarea>
+                </div>
+                
+                <hr style="border-color: rgba(255,255,255,0.1); margin: 25px 0;">
+                <h5 style="color: #25d366; margin-bottom: 15px;"><i class="fa-solid fa-shield-halved"></i> Segurança</h5>
+                <div class="form-group">
+                  <label class="form-label">Mensagem do PIN de Validação (OTP)</label>
+                  <textarea class="form-control" id="cfg-msg-codigo-otp" rows="2" placeholder="Seu código de acesso é: *{codigo}*"></textarea>
+                  <small style="color: #aaa;">Variável: <b>{codigo}</b> (O número PIN gerado)</small>
                 </div>
               </div>
+              
               <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1.1rem; padding: 12px; border-radius: 10px;">
                 <i class="fa-solid fa-floppy-disk"></i> Salvar Automações
               </button>
             </div>
-          </form>
+\n          </form>
         </div>
       </div>
 
@@ -1504,35 +1546,6 @@
           <button type="button" class="btn btn-secondary" style="width: 100%; color: var(--danger); border-color: var(--danger);" onclick="redefinirSenhaCliente()">
             <i class="fa-solid fa-key"></i> Redefinir Senha e Enviar por WhatsApp
           </button>
-        
-            <!-- SEÇÃO 5: AUTOMAÇÃO E BOT -->
-            <div id="cfg-tab-automa" class="cfg-tab-content" style="display: none;">
-              <div style="background: rgba(37, 211, 102, 0.05); border: 1px solid rgba(37, 211, 102, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-                <h4 style="font-size: 1.1rem; font-weight: 800; color: #25d366; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid rgba(37, 211, 102, 0.2); padding-bottom: 10px;">
-                  <i class="fa-solid fa-robot" style="margin-right: 8px;"></i> Fluxo de Conversa e Bot
-                </h4>
-                <div class="form-group">
-                  <label class="form-label">Assistente Virtual (Bot)</label>
-                  <select class="form-control" id="cfg-bot-ativo">
-                    <option value="1">✅ Ligado (Responde menu e rastreio)</option>
-                    <option value="0">❌ Desligado (Apenas atendimento humano)</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Mensagem de Boas-Vindas (Menu Inicial)</label>
-                  <textarea class="form-control" id="cfg-msg-boas-vindas" rows="4" placeholder="Ex: Olá! Sou o assistente virtual da Gráfica. Digite 1 para..."></textarea>
-                  <small style="color: #aaa;">Esta mensagem é enviada quando o cliente manda a primeira mensagem.</small>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Mensagem de Atualização de Pedido</label>
-                  <textarea class="form-control" id="cfg-msg-pedido-status" rows="3" placeholder="Use {codigo} e {status}"></textarea>
-                  <small style="color: #aaa;">Variáveis disponíveis: <b>{codigo}</b> (Ex: #GF-1234), <b>{status}</b> (Ex: Pronto para Retirada)</small>
-                </div>
-              </div>
-              <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1.1rem; padding: 12px; border-radius: 10px;">
-                <i class="fa-solid fa-floppy-disk"></i> Salvar Automações
-              </button>
-            </div>
 </form>
       </div>
     </div>
