@@ -261,7 +261,7 @@
             })
             .then(res => res.json())
             .then(resData => {
-                if(resData.sucesso) alert('Fluxo salvo com sucesso!');
+                if(resData.message) alert('Fluxo salvo com sucesso!');
                 else alert('Erro ao salvar fluxo.');
             });
         });
