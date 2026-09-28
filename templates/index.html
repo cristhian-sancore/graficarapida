@@ -739,6 +739,7 @@
               <button type="button" class="btn btn-outline" id="btn-cfg-tab-fin" onclick="switchCfgTab('fin')"><i class="fa-solid fa-money-bill-wave"></i> Financeiro</button>
               <button type="button" class="btn btn-outline" id="btn-cfg-tab-vitrine" onclick="switchCfgTab('vitrine')"><i class="fa-solid fa-palette"></i> Vitrine</button>
               <button type="button" class="btn btn-outline" id="btn-cfg-tab-evo" onclick="switchCfgTab('evo')"><i class="fa-brands fa-whatsapp"></i> Integração WhatsApp</button>
+              <button type="button" class="btn btn-outline" id="btn-cfg-tab-automa" onclick="switchCfgTab('automa')"><i class="fa-solid fa-robot"></i> Automação & Bot</button>
             </div>
 
             <!-- SEÇÃO 1: DADOS DO NEGÓCIO -->
@@ -855,6 +856,35 @@
                   <i class="fa-solid fa-floppy-disk"></i> Salvar Configurações de WhatsApp
                 </button>
               </div>
+            </div>
+            
+            <!-- SEÇÃO 5: AUTOMAÇÃO E BOT -->
+            <div id="cfg-tab-automa" class="cfg-tab-content" style="display: none;">
+              <div style="background: rgba(37, 211, 102, 0.05); border: 1px solid rgba(37, 211, 102, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                <h4 style="font-size: 1.1rem; font-weight: 800; color: #25d366; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid rgba(37, 211, 102, 0.2); padding-bottom: 10px;">
+                  <i class="fa-solid fa-robot" style="margin-right: 8px;"></i> Fluxo de Conversa e Bot
+                </h4>
+                <div class="form-group">
+                  <label class="form-label">Assistente Virtual (Bot)</label>
+                  <select class="form-control" id="cfg-bot-ativo">
+                    <option value="1">✅ Ligado (Responde menu e rastreio)</option>
+                    <option value="0">❌ Desligado (Apenas atendimento humano)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Mensagem de Boas-Vindas (Menu Inicial)</label>
+                  <textarea class="form-control" id="cfg-msg-boas-vindas" rows="4" placeholder="Ex: Olá! Sou o assistente virtual da Gráfica. Digite 1 para..."></textarea>
+                  <small style="color: #aaa;">Esta mensagem é enviada quando o cliente manda a primeira mensagem.</small>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Mensagem de Atualização de Pedido</label>
+                  <textarea class="form-control" id="cfg-msg-pedido-status" rows="3" placeholder="Use {codigo} e {status}"></textarea>
+                  <small style="color: #aaa;">Variáveis disponíveis: <b>{codigo}</b> (Ex: #GF-1234), <b>{status}</b> (Ex: Pronto para Retirada)</small>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 1.1rem; padding: 12px; border-radius: 10px;">
+                <i class="fa-solid fa-floppy-disk"></i> Salvar Automações
+              </button>
             </div>
           </form>
         </div>
