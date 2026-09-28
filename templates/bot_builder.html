@@ -224,7 +224,7 @@
     }
 
     // Initialize with a default 'Inicio' node if empty
-    fetch('/api/config', { headers: { 'X-Admin-Token': localStorage.getItem('token') || '' } })
+    fetch('/api/config', { headers: { 'X-Admin-Token': localStorage.getItem('grafica_adm_token') || '' } })
       .then(res => res.json())
       .then(data => {
         if(data.bot_fluxo_json && data.bot_fluxo_json !== '{}' && data.bot_fluxo_json !== 'null') {
@@ -247,15 +247,19 @@
       var configStr = JSON.stringify(exportData);
       
       // Fetch existing config to append this to it
-      fetch('/api/config', { headers: { 'X-Admin-Token': localStorage.getItem('token') || '' } })
+      fetch('/api/config', { headers: { 'X-Admin-Token': localStorage.getItem('grafica_adm_token') || '' } })
         .then(res => res.json())
         .then(data => {
+            if (data.error) {
+                alert('Erro de autenticação: ' + data.error);
+                return;
+            }
             data.bot_fluxo_json = configStr;
             fetch('/api/config', {
                 method: 'PUT',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'X-Admin-Token': localStorage.getItem('token') || ''
+                    'X-Admin-Token': localStorage.getItem('grafica_adm_token') || ''
                 },
                 body: JSON.stringify(data)
             })
