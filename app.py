@@ -257,7 +257,8 @@ def init_db():
     safe_add_column(cursor, conn, 'configuracoes', 'msg_rastreio_pedido TEXT')
     safe_add_column(cursor, conn, 'configuracoes', 'msg_rastreio_orcamento TEXT')
     safe_add_column(cursor, conn, 'configuracoes', 'msg_bot_transferencia TEXT')
-    safe_add_column(cursor, conn, 'configuracoes', 'msg_codigo_otp TEXT')\n    safe_add_column(cursor, conn, 'configuracoes', 'bot_fluxo_json TEXT')
+    safe_add_column(cursor, conn, 'configuracoes', 'msg_codigo_otp TEXT')
+    safe_add_column(cursor, conn, 'configuracoes', 'bot_fluxo_json TEXT')
     safe_add_column(cursor, conn, 'configuracoes', 'bot_ativo INTEGER DEFAULT 1')
 
     # Produtos
@@ -1841,7 +1842,7 @@ def admin_bot_builder():
     if 'usuario' not in session:
         return redirect(url_for('login'))
     return render_template('bot_builder.html')
-\n@app.route('/api/dashboard', methods=['GET'])
+@app.route('/api/dashboard', methods=['GET'])
 def get_dashboard_metrics():
     token = request.headers.get('X-Admin-Token')
     if not get_current_admin(token):
