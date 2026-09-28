@@ -257,7 +257,7 @@ def init_db():
     safe_add_column(cursor, conn, 'configuracoes', 'msg_rastreio_pedido TEXT')
     safe_add_column(cursor, conn, 'configuracoes', 'msg_rastreio_orcamento TEXT')
     safe_add_column(cursor, conn, 'configuracoes', 'msg_bot_transferencia TEXT')
-    safe_add_column(cursor, conn, 'configuracoes', 'msg_codigo_otp TEXT')
+    safe_add_column(cursor, conn, 'configuracoes', 'msg_codigo_otp TEXT')\n    safe_add_column(cursor, conn, 'configuracoes', 'bot_fluxo_json TEXT')
     safe_add_column(cursor, conn, 'configuracoes', 'bot_ativo INTEGER DEFAULT 1')
 
     # Produtos
@@ -1118,7 +1118,7 @@ def api_config():
                 evolution_api_url = ?, evolution_api_key = ?, evolution_instance = ?,
                 validar_whatsapp_ativo = ?, msg_boas_vindas = ?, msg_pedido_status = ?, bot_ativo = ?,
                 msg_pedido_recebido = ?, msg_orcamento_recebido = ?, msg_orcamento_status = ?,
-                msg_rastreio_pedido = ?, msg_rastreio_orcamento = ?, msg_bot_transferencia = ?, msg_codigo_otp = ?
+                msg_rastreio_pedido = ?, msg_rastreio_orcamento = ?, msg_bot_transferencia = ?, msg_codigo_otp = ?, bot_fluxo_json = ?
             WHERE id = (SELECT id FROM configuracoes LIMIT 1)
         ''', (
             data.get('nome_grafica'), data.get('whatsapp'), data.get('chave_pix'),
@@ -1129,7 +1129,7 @@ def api_config():
             data.get('msg_boas_vindas'), data.get('msg_pedido_status'),
             1 if str(data.get('bot_ativo', '1')) == '1' else 0,
             data.get('msg_pedido_recebido'), data.get('msg_orcamento_recebido'), data.get('msg_orcamento_status'),
-            data.get('msg_rastreio_pedido'), data.get('msg_rastreio_orcamento'), data.get('msg_bot_transferencia'), data.get('msg_codigo_otp')
+            data.get('msg_rastreio_pedido'), data.get('msg_rastreio_orcamento'), data.get('msg_bot_transferencia'), data.get('msg_codigo_otp'), data.get('bot_fluxo_json')
         ))
         conn.commit()
         conn.close()
@@ -1835,7 +1835,13 @@ def get_clientes():
     conn.close()
     return jsonify(clientes)
 
-@app.route('/api/dashboard', methods=['GET'])
+
+@app.route('/admin/bot_builder')
+def admin_bot_builder():
+    if 'usuario' not in session:
+        return redirect(url_for('login'))
+    return render_template('bot_builder.html')
+\n@app.route('/api/dashboard', methods=['GET'])
 def get_dashboard_metrics():
     token = request.headers.get('X-Admin-Token')
     if not get_current_admin(token):

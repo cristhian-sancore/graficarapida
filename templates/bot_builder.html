@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Construtor de Fluxo do Bot - Gráfica Rápida</title>
+  <link rel="stylesheet" href="/static/css/drawflow.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --panel-bg: #1e293b;
+      --primary: #3b82f6;
+      --success: #25d366;
+      --text: #f8fafc;
+      --border: #334155;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-dark);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #drawflow {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+    .sidebar {
+      width: 300px;
+      background: var(--panel-bg);
+      border-right: 1px solid var(--border);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      z-index: 10;
+    }
+    .top-bar {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 10;
+      display: flex;
+      gap: 10px;
+    }
+    .btn {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-success { background: var(--success); }
+    .btn-outline { background: transparent; border: 1px solid var(--border); }
+    .drag-item {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      padding: 15px;
+      border-radius: 8px;
+      cursor: grab;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .drag-item:active { cursor: grabbing; }
+
+    /* Theme Overrides for Drawflow */
+    .drawflow .drawflow-node {
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      min-width: 250px;
+    }
+    .drawflow .drawflow-node .title-box {
+      background: rgba(0,0,0,0.2);
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+      border-radius: 8px 8px 0 0;
+      font-weight: bold;
+    }
+    .drawflow .drawflow-node .box {
+      padding: 15px;
+    }
+    .drawflow .drawflow-node input, .drawflow .drawflow-node textarea, .drawflow .drawflow-node select {
+      width: 100%;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 8px;
+      border-radius: 4px;
+      margin-top: 5px;
+      box-sizing: border-box;
+    }
+    .drawflow .connection .main-path {
+      stroke: var(--success);
+      stroke-width: 3px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar">
+    <h3 style="margin-top:0"><i class="fa-solid fa-robot"></i> Blocos do Bot</h3>
+    <p style="font-size: 0.85rem; color: #aaa;">Arraste os blocos para a tela para montar seu fluxo.</p>
+    
+    <div class="drag-item" draggable="true" ondragstart="drag(event)" data-node="mensagem">
+      <i class="fa-solid fa-comment-dots text-primary"></i>
+      <span>Enviar Mensagem</span>
+    </div>
+    <div class="drag-item" draggable="true" ondragstart="drag(event)" data-node="menu">
+      <i class="fa-solid fa-list text-primary"></i>
+      <span>Menu de Opções</span>
+    </div>
+    <div class="drag-item" draggable="true" ondragstart="drag(event)" data-node="rastreio">
+      <i class="fa-solid fa-magnifying-glass text-primary"></i>
+      <span>Rastrear Pedido/Orçamento</span>
+    </div>
+    <div class="drag-item" draggable="true" ondragstart="drag(event)" data-node="humano">
+      <i class="fa-solid fa-headset text-primary"></i>
+      <span>Transferir para Humano</span>
+    </div>
+  </div>
+
+  <div style="flex:1; position:relative;">
+    <div class="top-bar">
+      <a href="/admin" class="btn btn-outline"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
+      <button class="btn btn-success" onclick="salvarFluxo()"><i class="fa-solid fa-floppy-disk"></i> Salvar Fluxo</button>
+    </div>
+    <div id="drawflow" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+  </div>
+
+  <script src="/static/js/drawflow.min.js"></script>
+  <script>
+    var id = document.getElementById("drawflow");
+    var editor = new Drawflow(id);
+    editor.start();
+
+    // Setup events
+    var draggedNode = null;
+    function allowDrop(ev) { ev.preventDefault(); }
+    function drag(ev) { draggedNode = ev.target.getAttribute('data-node'); }
+    function drop(ev) {
+      ev.preventDefault();
+      if (!draggedNode) return;
+      var pos_x = ev.clientX * (editor.precanvas.clientWidth / (editor.precanvas.clientWidth * editor.zoom)) - (editor.precanvas.getBoundingClientRect().x * (editor.precanvas.clientWidth / (editor.precanvas.clientWidth * editor.zoom)));
+      var pos_y = ev.clientY * (editor.precanvas.clientHeight / (editor.precanvas.clientHeight * editor.zoom)) - (editor.precanvas.getBoundingClientRect().y * (editor.precanvas.clientHeight / (editor.precanvas.clientHeight * editor.zoom)));
+      
+      addNodeToDrawFlow(draggedNode, pos_x, pos_y);
+    }
+
+    function addNodeToDrawFlow(name, pos_x, pos_y) {
+      if(editor.editor_mode === 'fixed') return false;
+      pos_x = pos_x * (editor.precanvas.clientWidth / (editor.precanvas.clientWidth * editor.zoom)) - (editor.precanvas.getBoundingClientRect().x * (editor.precanvas.clientWidth / (editor.precanvas.clientWidth * editor.zoom)));
+      pos_y = pos_y * (editor.precanvas.clientHeight / (editor.precanvas.clientHeight * editor.zoom)) - (editor.precanvas.getBoundingClientRect().y * (editor.precanvas.clientHeight / (editor.precanvas.clientHeight * editor.zoom)));
+
+      switch (name) {
+        case 'mensagem':
+          var html = `
+            <div>
+              <div class="title-box"><i class="fa-solid fa-comment-dots"></i> Enviar Mensagem</div>
+              <div class="box">
+                <p>Texto da mensagem:</p>
+                <textarea df-text rows="3" placeholder="Digite a mensagem aqui..."></textarea>
+              </div>
+            </div>
+          `;
+          editor.addNode('mensagem', 1, 1, pos_x, pos_y, 'mensagem', { text: '' }, html);
+          break;
+        case 'menu':
+          var html = `
+            <div>
+              <div class="title-box"><i class="fa-solid fa-list"></i> Menu de Opções</div>
+              <div class="box">
+                <p>Mensagem do Menu:</p>
+                <textarea df-text rows="2" placeholder="Escolha uma opção:"></textarea>
+                <hr style="border-color:#334155; margin:10px 0;">
+                <p>Opção 1:</p>
+                <input type="text" df-opt1 placeholder="Digite 1 para...">
+                <p>Opção 2:</p>
+                <input type="text" df-opt2 placeholder="Digite 2 para...">
+                <p>Opção 3:</p>
+                <input type="text" df-opt3 placeholder="Digite 3 para...">
+              </div>
+            </div>
+          `;
+          // 1 input, 3 outputs
+          editor.addNode('menu', 1, 3, pos_x, pos_y, 'menu', { text: '', opt1: '', opt2: '', opt3: '' }, html);
+          break;
+        case 'rastreio':
+          var html = `
+            <div>
+              <div class="title-box"><i class="fa-solid fa-magnifying-glass"></i> Rastrear</div>
+              <div class="box">
+                <p>Ação do sistema:</p>
+                <small style="color:#aaa;">Pede o código (ex: #GF-123) e retorna o status atual do pedido.</small>
+              </div>
+            </div>
+          `;
+          editor.addNode('rastreio', 1, 1, pos_x, pos_y, 'rastreio', {}, html);
+          break;
+        case 'humano':
+          var html = `
+            <div>
+              <div class="title-box"><i class="fa-solid fa-headset"></i> Atendimento Humano</div>
+              <div class="box">
+                <p>Mensagem de transferência:</p>
+                <textarea df-text rows="2">Ok! Transferindo para um atendente.</textarea>
+              </div>
+            </div>
+          `;
+          editor.addNode('humano', 1, 0, pos_x, pos_y, 'humano', { text: 'Ok! Transferindo para um atendente.' }, html);
+          break;
+      }
+    }
+
+    // Initialize with a default 'Inicio' node if empty
+    fetch('/api/config')
+      .then(res => res.json())
+      .then(data => {
+        if(data.bot_fluxo_json && data.bot_fluxo_json !== '{}' && data.bot_fluxo_json !== 'null') {
+          editor.import(JSON.parse(data.bot_fluxo_json));
+        } else {
+          var html_inicio = `
+            <div>
+              <div class="title-box" style="background:var(--success)"><i class="fa-solid fa-play"></i> Início do Fluxo</div>
+              <div class="box">
+                <small>Conecte este nó no primeiro passo do seu robô.</small>
+              </div>
+            </div>
+          `;
+          editor.addNode('inicio', 0, 1, 150, 300, 'inicio', {}, html_inicio);
+        }
+      });
+
+    function salvarFluxo() {
+      var exportData = editor.export();
+      var configStr = JSON.stringify(exportData);
+      
+      // Fetch existing config to append this to it
+      fetch('/api/config')
+        .then(res => res.json())
+        .then(data => {
+            data.bot_fluxo_json = configStr;
+            fetch('/api/config', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(resData => {
+                if(resData.sucesso) alert('Fluxo salvo com sucesso!');
+                else alert('Erro ao salvar fluxo.');
+            });
+        });
+    }
+  </script>
+</body>
+</html>
