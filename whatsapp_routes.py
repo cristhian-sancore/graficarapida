@@ -473,6 +473,13 @@ def webhook_evolution():
             last_ref = cursor.fetchone()
             codigo = last_ref[0] if last_ref and last_ref[0] else "GERAL"
         
+        cursor.execute("SELECT * FROM configuracoes LIMIT 1")
+        row = cursor.fetchone()
+        cfg_bot = dict(row) if hasattr(row, 'keys') and row else {}
+        if not hasattr(row, 'keys') and row:
+            cols = [desc[0] for desc in cursor.description]
+            cfg_bot = dict(zip(cols, row))
+        
         
         # Extrai foto e wpp_id do webhook se enviada no payload
         data_inner = data.get('data', {})

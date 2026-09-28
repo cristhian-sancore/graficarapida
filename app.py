@@ -1839,8 +1839,6 @@ def get_clientes():
 
 @app.route('/admin/bot_builder')
 def admin_bot_builder():
-    if 'usuario' not in session:
-        return redirect(url_for('login'))
     return render_template('bot_builder.html')
 @app.route('/api/dashboard', methods=['GET'])
 def get_dashboard_metrics():
