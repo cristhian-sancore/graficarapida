@@ -1523,6 +1523,11 @@ def api_orcamento_edit(orc_id):
 
     if request.method == 'PUT':
         data = request.json
+        
+        # Get old orcamento to check for changes and get phone/code
+        cursor.execute('SELECT * FROM orcamentos WHERE id = ?', (orc_id,))
+        old_orc = cursor.fetchone()
+        
         cursor.execute('''
             UPDATE orcamentos 
             SET cliente_nome = ?, cliente_telefone = ?, descricao = ?, valor_estimado = ?, status = ?
@@ -1530,6 +1535,15 @@ def api_orcamento_edit(orc_id):
         ''', (data.get('cliente_nome'), data.get('cliente_telefone'), data.get('descricao'), float(data.get('valor_estimado', 0)), data.get('status', 'Pendente'), orc_id))
         conn.commit()
         conn.close()
+        
+        if old_orc:
+            old_dict = dict(old_orc)
+            new_status = data.get('status', 'Pendente')
+            new_valor = float(data.get('valor_estimado', 0))
+            if old_dict['status'] != new_status or old_dict['valor_estimado'] != new_valor:
+                msg = f" *Gráfica Rápida Express*\nSeu orçamento *{old_dict['codigo_orcamento']}* foi atualizado!\nStatus: *{new_status}*\nValor Estimado: R$ {new_valor:.2f}".replace('.', ',')
+                send_evolution_whatsapp(data.get('cliente_telefone') or old_dict['cliente_telefone'], msg)
+                
         return jsonify({'message': 'Orçamento atualizado com sucesso!'})
 
     elif request.method == 'DELETE':
